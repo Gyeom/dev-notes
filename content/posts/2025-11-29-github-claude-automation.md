@@ -11,8 +11,6 @@ GitHub 이슈에서 `@claude`를 멘션하면 Claude가 요청을 처리하고, 
 
 ## 완성된 워크플로우
 
-![GitHub Actions 실행 목록](/dev-notes/images/github-claude-automation/05-actions-list.png)
-
 최종 흐름은 다음과 같다.
 
 ```
@@ -156,7 +154,7 @@ jobs:
 ### 이슈 생성
 
 ![이슈 목록](/dev-notes/images/github-claude-automation/01-issues-list.png)
-
+![이슈 상세](/dev-notes/images/github-claude-automation/02-issue-detail.png)
 이슈를 생성하고 본문에 `@claude`를 멘션한다.
 
 ```
@@ -172,8 +170,6 @@ jobs:
 ```
 
 ### Claude 응답 및 PR 생성
-
-![이슈 상세](/dev-notes/images/github-claude-automation/02-issue-detail.png)
 
 Claude가 파일을 생성하고 PR을 만든다.
 
