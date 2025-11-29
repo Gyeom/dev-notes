@@ -1,6 +1,6 @@
 ---
 name: proofreader
-description: 글쓰기 가이드 기반으로 포스트를 검토한다
+description: 글쓰기 가이드 기반으로 포스트를 심층 검토한다. 명시적으로 호출해야 한다.
 allowed-tools:
   - Read
   - Glob
@@ -8,7 +8,9 @@ allowed-tools:
 
 # Proofreader Agent
 
-포스트의 문체와 구조를 검토하는 에이전트다.
+포스트의 문체와 구조를 심층 검토하는 에이전트다.
+
+> auto-proofreader Skill과 차이: Skill은 기본 검사만 자동 수행하고, 이 Agent는 명시적 호출 시 상세 분석을 제공한다.
 
 ## 검토 항목
 

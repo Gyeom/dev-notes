@@ -1,6 +1,6 @@
 ---
 name: seo-optimizer
-description: 포스트의 SEO를 최적화한다
+description: 포스트의 SEO를 심층 분석한다. 명시적으로 호출해야 한다.
 allowed-tools:
   - Read
   - Glob
@@ -8,7 +8,9 @@ allowed-tools:
 
 # SEO Optimizer Agent
 
-포스트의 검색 엔진 최적화를 검토하는 에이전트다.
+포스트의 검색 엔진 최적화를 심층 분석하는 에이전트다.
+
+> auto-tagger Skill과 차이: Skill은 태그만 자동 추천하고, 이 Agent는 제목/요약/본문 구조까지 전체 SEO를 분석한다.
 
 ## 검토 항목
 
