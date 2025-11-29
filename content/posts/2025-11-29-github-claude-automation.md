@@ -18,10 +18,6 @@ summary: "GitHub 이슈에서 @claude를 멘션하면 Claude가 포스트를 작
 
 [이전 글](/dev-notes/posts/2024-11-29-hugo-github-pages-auto-blog/)에서 Hugo 블로그와 GitHub Pages 자동 배포를 구축했다. 이번에는 GitHub 이슈에서 `@claude`를 멘션하면 Claude가 포스트를 작성하고 PR까지 자동 생성하는 워크플로우를 추가한다.
 
-> **관련 글**
-> - [Claude Code 완벽 가이드](/dev-notes/posts/2024-11-29-claude-code-ultimate-guide/) - 설치부터 고급 활용까지
-> - [Claude Code 해부](/dev-notes/posts/2025-11-29-claude-code-anatomy/) - 내부 아키텍처와 설계 철학
-
 코드 작성, 문서 생성, 버그 수정 등 다양한 작업을 이슈 하나로 요청할 수 있다. 리뷰 프로세스를 유지하면서도 반복적인 작업을 자동화할 수 있어 생산성이 크게 향상된다.
 
 ## 완성된 워크플로우
