@@ -1,5 +1,5 @@
 ---
-title: "GitHub 이슈에서 @claude 멘션으로 자동 PR 생성하기"
+title: "Claude Code + GitHub Actions: 이슈 기반 자동 PR 파이프라인"
 date: 2025-11-29
 draft: false
 tags: ["GitHub Actions", "Claude Code", "자동화", "CI/CD", "AI"]
