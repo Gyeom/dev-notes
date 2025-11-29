@@ -1,19 +1,15 @@
 {
-  "project": {
-    "name": "dev-notes",
-    "type": "hugo-blog",
-    "language": "ko"
-  },
-  "blog": {
-    "content_dir": "content/posts",
-    "date_format": "YYYY-MM-DD",
-    "filename_pattern": "{date}-{slug}.md"
-  },
-  "commands": {
-    "build": "hugo --gc --minify",
-    "serve": "hugo server -D",
-    "new_post": "./scripts/new-post.sh",
-    "auto_post": "./scripts/auto-post.sh",
-    "deploy": "git add . && git commit -m '{message}' && git push"
+  "permissions": {
+    "allow": [
+      "Bash(hugo:*)",
+      "Bash(hugo server:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git status:*)",
+      "Bash(./scripts/*)",
+      "Read(content/**)",
+      "Write(content/**)"
+    ]
   }
 }
