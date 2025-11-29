@@ -1,4 +1,4 @@
-baseURL = 'https://USERNAME.github.io/dev-notes/'  # GitHub 사용자명으로 변경 필요
+baseURL = 'https://Gyeom.github.io/dev-notes/'
 languageCode = 'ko-kr'
 title = 'Dev Notes'
 theme = 'PaperMod'
@@ -32,7 +32,7 @@ buildExpired = false
   # 소셜 아이콘
   [[params.socialIcons]]
     name = "github"
-    url = "https://github.com/USERNAME"
+    url = "https://github.com/Gyeom"
 
 # 메뉴 설정
 [menu]
