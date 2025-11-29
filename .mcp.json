@@ -10,6 +10,13 @@
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
       }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@anthropic-ai/mcp-server-playwright@latest"],
+      "env": {
+        "PLAYWRIGHT_MCP_SCREENSHOT_DIR": "./static/images"
+      }
     }
   }
 }

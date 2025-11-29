@@ -12,9 +12,27 @@
       "Bash(./scripts/*)",
       "Bash(ls:*)",
       "Bash(wc:*)",
+      "Bash(sips:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue close:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr close:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(git pull:*)",
       "Read(content/**)",
       "Write(content/**)",
-      "Edit(content/**)"
+      "Edit(content/**)",
+      "mcp__github__list_issues",
+      "mcp__github__create_issue",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_resize"
     ]
   },
   "hooks": {

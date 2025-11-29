@@ -23,6 +23,7 @@ git push                  # 배포 (GitHub Actions 자동 실행)
 | `/review` | 포스트 문체/SEO 검토 |
 | `/deploy` | 변경사항 배포 |
 | `/preview` | 로컬 미리보기 |
+| `/screenshot` | 웹 페이지 스크린샷 캡처 |
 
 ## MCP 서버
 
