@@ -1004,15 +1004,10 @@ Hook이 exit 2를 반환했습니다
 ### MCP 연결 오류
 
 ```
-MCP server 'github' failed to start
+MCP server 'xxx' failed to start
 ```
 
-→ 환경변수 확인. `GITHUB_TOKEN`이 설정되어 있는지, 권한이 충분한지 확인한다.
-
-```bash
-echo $GITHUB_TOKEN
-gh auth status
-```
+→ MCP 서버 설정 확인. `.mcp.json`의 command 경로와 환경변수가 올바른지 확인한다.
 
 ### 권한 오류
 
