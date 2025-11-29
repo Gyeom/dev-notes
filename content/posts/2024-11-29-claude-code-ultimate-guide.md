@@ -96,9 +96,65 @@ claude --model opus   # CLI 옵션
 
 ## Part 2: 프로젝트 설정
 
-### 4. CLAUDE.md - 프로젝트 메모리
+### 4. 디렉토리 구조 이해
 
-프로젝트 루트에 `CLAUDE.md`를 만들면 Claude가 자동으로 읽는다.
+Claude Code는 두 곳에 파일을 저장한다.
+
+**전역 디렉토리 (`~/.claude/`)**
+
+```
+~/.claude/
+├── CLAUDE.md              # 전역 메모리 (모든 프로젝트 공통)
+├── settings.json          # 전역 설정
+├── settings.local.json    # 로컬 전용 설정 (API 키 등)
+├── history.jsonl          # 대화 히스토리
+├── projects/              # 프로젝트별 메타데이터
+├── todos/                 # 작업 목록 저장
+├── plans/                 # Plan 모드 결과물
+├── session-env/           # 세션 환경 정보
+├── file-history/          # 파일 변경 이력 (되돌리기용)
+└── debug/                 # 디버그 로그
+```
+
+**프로젝트 디렉토리 (`.claude/`)**
+
+```
+.claude/
+├── settings.json          # 프로젝트 설정 (Git 공유)
+├── settings.local.json    # 로컬 설정 (Git 무시)
+├── commands/              # 커스텀 슬래시 명령어
+│   ├── post.md
+│   ├── deploy.md
+│   └── ...
+├── skills/                # 자동 호출 기능
+│   ├── auto-proofreader.md
+│   └── auto-tagger.md
+└── agents/                # 명시적 호출 기능
+    ├── proofreader.md
+    └── seo-optimizer.md
+```
+
+**프로젝트 루트 파일**
+
+| 파일 | 용도 |
+|------|------|
+| `CLAUDE.md` | 프로젝트 메모리 (빌드 명령어, 코드 스타일 등) |
+| `.mcp.json` | MCP 서버 설정 |
+
+**Git에 포함할 것 / 제외할 것**
+
+```gitignore
+# .gitignore
+.claude/settings.local.json  # API 키, 개인 설정
+```
+
+팀과 공유할 설정은 `settings.json`에, 개인 설정은 `settings.local.json`에 분리한다.
+
+---
+
+### 5. CLAUDE.md - 프로젝트 메모리
+
+프로젝트 루트에 `CLAUDE.md`를 만들면 Claude가 세션 시작 시 자동으로 읽는다.
 
 ```markdown
 # My Project
@@ -138,7 +194,7 @@ claude --model opus   # CLI 옵션
 
 ---
 
-### 5. 권한 설정
+### 6. 권한 설정
 
 Claude Code는 **보안**을 위해 기본적으로 도구 사용 전 사용자 승인을 요청한다. 파일 수정, 명령어 실행 등이 의도치 않은 결과를 초래할 수 있기 때문이다.
 
@@ -226,7 +282,7 @@ claude --dangerously-skip-permissions
 
 ---
 
-### 6. 커스텀 슬래시 명령어
+### 7. 커스텀 슬래시 명령어
 
 `.claude/commands/review.md`:
 
@@ -260,7 +316,7 @@ $ARGUMENTS 파일의 코드를 리뷰한다.
 
 ## Part 3: 자동화
 
-### 7. Skills vs Agents
+### 8. Skills vs Agents
 
 둘 다 특화된 기능을 정의하지만 호출 방식이 다르다.
 
@@ -314,7 +370,7 @@ security-reviewer 에이전트로 src/auth/ 폴더 검토해줘
 
 ---
 
-### 8. Hooks
+### 9. Hooks
 
 특정 이벤트에서 자동으로 실행되는 스크립트다.
 
@@ -361,7 +417,7 @@ security-reviewer 에이전트로 src/auth/ 폴더 검토해줘
 
 ## Part 4: 외부 연동
 
-### 9. MCP 서버
+### 10. MCP 서버
 
 Model Context Protocol. 외부 도구와 데이터 소스를 Claude에 연결한다.
 
@@ -460,7 +516,7 @@ browser_take_screenshot({
 
 ---
 
-### 10. GitHub 연동
+### 11. GitHub 연동
 
 이슈나 PR에서 `@claude`를 멘션하면 Claude가 응답한다.
 
