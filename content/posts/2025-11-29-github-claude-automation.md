@@ -2,7 +2,7 @@
 title: "AI 자동화 블로그 만들기 (2) - Claude Code로 이슈 기반 자동 포스팅"
 date: 2025-11-29
 draft: false
-tags: ["GitHub Actions", "Claude Code", "자동화", "CI/CD", "AI"]
+tags: ["GitHub Actions", "Claude Code", "자동화", "CI/CD", "AI", "Mermaid"]
 categories: ["개발환경"]
 series: ["AI 자동화 블로그"]
 summary: "GitHub 이슈에서 @claude를 멘션하면 Claude가 포스트를 작성하고 PR까지 자동 생성하는 워크플로우를 구축한다. 시리즈의 두 번째 글."
@@ -271,6 +271,58 @@ PR을 머지하면 GitHub Pages 배포 워크플로우가 자동 실행된다. �
 ![블로그에 포스트 게시됨](/dev-notes/images/github-claude-automation/07-blog-main.png)
 
 Claude가 작성한 "OpenFGA와 ReBAC로 구현하는 관계 기반 권한 제어" 포스트가 블로그에 게시됐다. PR 본문에 `Closes #9`가 포함되어 있었기 때문에 머지와 동시에 원본 이슈도 자동으로 닫힌다.
+
+---
+
+## 8. Mermaid 다이어그램 설정
+
+이 포스트에서 사용한 플로우차트는 Mermaid로 작성했다. Hugo에서 Mermaid를 사용하려면 두 가지 설정이 필요하다.
+
+### 렌더 훅 생성
+
+`layouts/_default/_markup/render-codeblock-mermaid.html`:
+
+```html
+<pre class="mermaid">
+{{- .Inner | safeHTML }}
+</pre>
+```
+
+마크다운의 ` ```mermaid ` 코드블록을 `<pre class="mermaid">` 태그로 변환한다.
+
+### Mermaid 스크립트 로드
+
+`layouts/partials/extend_footer.html`:
+
+```html
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+  const isDark = document.body.classList.contains('dark') ||
+                 document.documentElement.getAttribute('data-theme') === 'dark';
+
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDark ? 'dark' : 'default',
+    securityLevel: 'loose'
+  });
+
+  mermaid.run();
+</script>
+```
+
+PaperMod 테마의 `extend_footer.html` 파셜을 오버라이드해서 Mermaid ESM 모듈을 로드한다. 다크모드 감지 로직도 포함되어 있어 테마에 맞게 다이어그램 색상이 자동 전환된다.
+
+### 사용법
+
+마크다운에서 바로 사용하면 된다.
+
+````markdown
+```mermaid
+flowchart LR
+    A[시작] --> B[끝]
+```
+````
 
 ---
 
