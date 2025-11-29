@@ -993,27 +993,13 @@ claude -r <session-id> # 특정 세션 복원
 
 ## Troubleshooting
 
-### Hugo 빌드 오류
-
-```
-Error: error building site: TOCSS: failed to transform
-```
-
-→ Hugo Extended 버전이 필요하다. `hugo version`으로 확인 후 Extended 버전을 설치한다.
-
-```
-Error: module "PaperMod" not found
-```
-
-→ `git submodule update --init --recursive`로 테마를 초기화한다.
-
-### Git 푸시 실패
+### Hook 실행 실패
 
 ```
 Hook이 exit 2를 반환했습니다
 ```
 
-→ `PreToolUse` Hook에서 빌드 실패. `hugo --gc --minify`를 수동 실행하여 오류를 확인한다.
+→ `PreToolUse` Hook에서 스크립트가 실패함. Hook에 설정된 명령어를 수동 실행하여 오류를 확인한다.
 
 ### MCP 연결 오류
 
