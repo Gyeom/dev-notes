@@ -11,7 +11,7 @@ GitHub 이슈에서 `@claude`를 멘션하면 Claude가 요청을 처리하고, 
 
 ## 완성된 워크플로우
 
-![GitHub Actions 실행 목록](/images/github-claude-automation/05-actions-list.png)
+![GitHub Actions 실행 목록](/dev-notes/images/github-claude-automation/05-actions-list.png)
 
 최종 흐름은 다음과 같다.
 
@@ -151,7 +151,7 @@ jobs:
 
 ### 이슈 생성
 
-![이슈 목록](/images/github-claude-automation/01-issues-list.png)
+![이슈 목록](/dev-notes/images/github-claude-automation/01-issues-list.png)
 
 이슈를 생성하고 본문에 `@claude`를 멘션한다.
 
@@ -161,21 +161,21 @@ jobs:
 
 ### Claude 응답 및 PR 생성
 
-![이슈 상세](/images/github-claude-automation/02-issue-detail.png)
+![이슈 상세](/dev-notes/images/github-claude-automation/02-issue-detail.png)
 
 Claude가 파일을 생성하고 PR을 만든다.
 
-![PR 목록](/images/github-claude-automation/03-pr-list.png)
+![PR 목록](/dev-notes/images/github-claude-automation/03-pr-list.png)
 
 ### PR 상세
 
-![PR 상세](/images/github-claude-automation/04-pr-detail.png)
+![PR 상세](/dev-notes/images/github-claude-automation/04-pr-detail.png)
 
 PR에는 관련 이슈 링크(`Closes #3`)가 포함되어, 머지 시 이슈가 자동으로 닫힌다.
 
 ### 워크플로우 실행 로그
 
-![워크플로우 실행](/images/github-claude-automation/06-workflow-run.png)
+![워크플로우 실행](/dev-notes/images/github-claude-automation/06-workflow-run.png)
 
 Actions 탭에서 실행 로그를 확인할 수 있다.
 
@@ -243,7 +243,7 @@ Claude API 호출 비용이 발생한다. 복잡한 요청일수록 토큰 사�
 
 ## 결과
 
-![블로그 메인](/images/github-claude-automation/07-blog-main.png)
+![블로그 메인](/dev-notes/images/github-claude-automation/07-blog-main.png)
 
 GitHub 이슈에서 `@claude`를 멘션하는 것만으로 코드 생성부터 PR까지 자동화됐다. 리뷰 후 머지하면 배포까지 완료된다.
 
