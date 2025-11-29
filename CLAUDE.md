@@ -30,6 +30,31 @@ git push                  # 배포 (GitHub Actions 자동 실행)
 |-----|------|----------|
 | `fetch` | URL 내용 가져오기 | "이 URL 내용 요약해서 포스팅해줘" |
 | `github` | GitHub 저장소 관리 | "최근 이슈 확인해줘", "PR 상태 알려줘" |
+| `playwright` | 브라우저 자동화 | 스크린샷 캡처, 웹 페이지 조작 |
+
+### Playwright 스크린샷 가이드
+
+스크린샷 캡처 시 불필요한 공백을 줄이려면 viewport를 콘텐츠에 맞게 조정한다.
+
+```javascript
+// 1. viewport 크기 조정 (캡처 전)
+browser_resize({ width: 1200, height: 600 })
+
+// 2. 스크린샷 캡처
+browser_take_screenshot({ filename: "screenshot.png" })
+
+// 3. 특정 요소만 캡처 (권장)
+browser_take_screenshot({
+  element: "main content",
+  ref: "main",
+  filename: "element.png"
+})
+```
+
+권장 viewport 높이:
+- 목록 페이지 (이슈, PR): 400-500px
+- 상세 페이지: 600-700px
+- 전체 페이지: `fullPage: true` 사용
 
 ## Skills (자동 호출)
 
