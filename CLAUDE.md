@@ -141,10 +141,18 @@ themes/PaperMod/  # Hugo 테마
 
 ## Knowledge Base
 
-`.claude/knowledge/post-index.md`에 포스트 인덱스가 저장된다.
-- `/index` 명령어로 갱신
-- 태그별 분류, 시리즈 정보 포함
-- 포스트 검색 및 연결 시 참조
+포스트 작성/수정 시 인덱스가 **자동 갱신**된다.
+
+```
+.claude/knowledge/
+├── post-index.md   # 마크다운 인덱스 (사람용)
+├── posts.json      # 구조화된 메타데이터 (기계용)
+└── schema.md       # 벡터 검색 대비 스키마
+```
+
+- 태그별 분류, 시리즈 정보, 핵심 키워드 포함
+- `/index` 명령어로 수동 갱신도 가능
+- 포스트 50개 이상 시 벡터 검색 도입 예정
 
 ## 사이트 URL
 

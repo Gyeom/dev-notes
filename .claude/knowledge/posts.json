@@ -1,0 +1,195 @@
+{
+  "version": "1.0",
+  "generated_at": "2025-11-30 00:31",
+  "post_count": 5,
+  "posts": [
+    {
+      "filename": "2025-11-29-openfga-rebac.md",
+      "title": "OpenFGA와 ReBAC로 구현하는 관계 기반 권한 제어",
+      "date": "2025-11-29",
+      "tags": [
+        "OpenFGA",
+        "ReBAC",
+        "권한관리",
+        "RBAC",
+        "Spring Boot",
+        "보안"
+      ],
+      "series": "",
+      "summary": "기존 RBAC의 한계를 넘어 관계 기반 접근 제어(ReBAC)를 구현하는 OpenFGA의 개념과 아키텍처, Spring Boot 연동 방법을 정리했다.",
+      "keywords": [
+        "ReBAC와 RBAC의 차이",
+        "OpenFGA 소개",
+        "스키마 정의 방법",
+        "관계 튜플과 권한 체크",
+        "Spring Boot 연동"
+      ]
+    },
+    {
+      "filename": "2025-11-29-github-claude-automation.md",
+      "title": "AI 자동화 블로그 만들기 (2) - Claude Code로 이슈 기반 자동 포스팅",
+      "date": "2025-11-29",
+      "tags": [
+        "GitHub Actions",
+        "Claude Code",
+        "자동화",
+        "CI/CD",
+        "AI"
+      ],
+      "series": "AI 자동화 블로그",
+      "summary": "GitHub 이슈에서 @claude를 멘션하면 Claude가 포스트를 작성하고 PR까지 자동 생성하는 워크플로우를 구축한다. 시리즈의 두 번째 글.",
+      "keywords": [
+        "개요",
+        "완성된 워크플로우",
+        "1. 사전 준비",
+        "2. 워크플로우 파일 작성",
+        "3. 실제 사용 예시"
+      ]
+    },
+    {
+      "filename": "2025-11-29-claude-code-anatomy.md",
+      "title": "Claude Code 해부: AI 에이전트는 어떻게 작동하는가",
+      "date": "2025-11-29",
+      "tags": [
+        "Claude Code",
+        "AI",
+        "에이전트",
+        "아키텍처",
+        "MCP"
+      ],
+      "series": "",
+      "summary": "Claude Code의 내부 구조를 해부하고, 이 설계가 의미하는 바를 탐구한다.",
+      "keywords": [
+        "들어가며",
+        "1. 맥락의 계층",
+        "2. 도구라는 손",
+        "3. 권한의 경계",
+        "4. 기억이 없다는 것"
+      ]
+    },
+    {
+      "filename": "2024-11-29-hugo-github-pages-auto-blog.md",
+      "title": "AI 자동화 블로그 만들기 (1) - Hugo + GitHub Pages 구축",
+      "date": "2024-11-29",
+      "tags": [
+        "Hugo",
+        "GitHub Pages",
+        "GitHub Actions",
+        "자동화",
+        "블로그",
+        "Mermaid"
+      ],
+      "series": "AI 자동화 블로그",
+      "summary": "Hugo + GitHub Actions로 마크다운만 push하면 자동 배포되는 블로그를 구축한다. 시리즈의 첫 번째 글.",
+      "keywords": [
+        "개요",
+        "기술 스택",
+        "구축 과정",
+        "자동 포스팅 스크립트",
+        "트러블슈팅"
+      ]
+    },
+    {
+      "filename": "2024-11-29-claude-code-ultimate-guide.md",
+      "title": "Claude Code 완벽 가이드 - 입문부터 고급 활용까지",
+      "date": "2024-11-29",
+      "tags": [
+        "Claude Code",
+        "AI",
+        "개발도구",
+        "자동화",
+        "MCP",
+        "가이드",
+        "Hugo",
+        "GitHub Pages"
+      ],
+      "series": "",
+      "summary": "Claude Code의 모든 기능을 정리한 종합 가이드. 설치부터 실전 프로젝트 적용까지.",
+      "keywords": [
+        "개요",
+        "Part 1: 기본 사용법",
+        "Part 2: 프로젝트 설정",
+        "빌드 명령어",
+        "코드 스타일"
+      ]
+    }
+  ],
+  "tags": {
+    "OpenFGA": [
+      "2025-11-29-openfga-rebac.md"
+    ],
+    "ReBAC": [
+      "2025-11-29-openfga-rebac.md"
+    ],
+    "권한관리": [
+      "2025-11-29-openfga-rebac.md"
+    ],
+    "RBAC": [
+      "2025-11-29-openfga-rebac.md"
+    ],
+    "Spring Boot": [
+      "2025-11-29-openfga-rebac.md"
+    ],
+    "보안": [
+      "2025-11-29-openfga-rebac.md"
+    ],
+    "GitHub Actions": [
+      "2025-11-29-github-claude-automation.md",
+      "2024-11-29-hugo-github-pages-auto-blog.md"
+    ],
+    "Claude Code": [
+      "2025-11-29-github-claude-automation.md",
+      "2025-11-29-claude-code-anatomy.md",
+      "2024-11-29-claude-code-ultimate-guide.md"
+    ],
+    "자동화": [
+      "2025-11-29-github-claude-automation.md",
+      "2024-11-29-hugo-github-pages-auto-blog.md",
+      "2024-11-29-claude-code-ultimate-guide.md"
+    ],
+    "CI/CD": [
+      "2025-11-29-github-claude-automation.md"
+    ],
+    "AI": [
+      "2025-11-29-github-claude-automation.md",
+      "2025-11-29-claude-code-anatomy.md",
+      "2024-11-29-claude-code-ultimate-guide.md"
+    ],
+    "에이전트": [
+      "2025-11-29-claude-code-anatomy.md"
+    ],
+    "아키텍처": [
+      "2025-11-29-claude-code-anatomy.md"
+    ],
+    "MCP": [
+      "2025-11-29-claude-code-anatomy.md",
+      "2024-11-29-claude-code-ultimate-guide.md"
+    ],
+    "Hugo": [
+      "2024-11-29-hugo-github-pages-auto-blog.md",
+      "2024-11-29-claude-code-ultimate-guide.md"
+    ],
+    "GitHub Pages": [
+      "2024-11-29-hugo-github-pages-auto-blog.md",
+      "2024-11-29-claude-code-ultimate-guide.md"
+    ],
+    "블로그": [
+      "2024-11-29-hugo-github-pages-auto-blog.md"
+    ],
+    "Mermaid": [
+      "2024-11-29-hugo-github-pages-auto-blog.md"
+    ],
+    "개발도구": [
+      "2024-11-29-claude-code-ultimate-guide.md"
+    ],
+    "가이드": [
+      "2024-11-29-claude-code-ultimate-guide.md"
+    ]
+  },
+  "series": {
+    "AI 자동화 블로그": [
+      "2025-11-29-github-claude-automation.md",
+      "2024-11-29-hugo-github-pages-auto-blog.md"
+    ]
+  }
+}

@@ -54,6 +54,10 @@
           {
             "type": "command",
             "command": "/Users/a13801/dev-notes/scripts/suggest-tags.sh"
+          },
+          {
+            "type": "command",
+            "command": "python3 /Users/a13801/dev-notes/scripts/update-index.py"
           }
         ]
       },
@@ -63,6 +67,10 @@
           {
             "type": "command",
             "command": "echo '✏️ 포스트가 수정되었습니다. /preview로 확인하세요.'"
+          },
+          {
+            "type": "command",
+            "command": "python3 /Users/a13801/dev-notes/scripts/update-index.py"
           }
         ]
       }
