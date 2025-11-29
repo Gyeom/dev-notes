@@ -62,9 +62,9 @@ jobs:
           # 이슈/PR 코멘트에서 @claude 이후 내용 추출
           PROMPT=$(echo "$COMMENT_BODY" | sed 's/.*@claude//')
 
-          # Claude 실행 (파일 생성/수정 허용)
+          # Claude 실행 (파일 생성/수정 허용, CI 환경에서 권한 자동 승인)
           echo "🤖 Claude 실행 중..."
-          if RESPONSE=$(claude -p "$PROMPT" --max-turns 20 2>&1); then
+          if RESPONSE=$(claude -p "$PROMPT" --max-turns 30 --dangerously-skip-permissions 2>&1); then
             CLAUDE_STATUS="success"
           else
             CLAUDE_STATUS="error"
