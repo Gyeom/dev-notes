@@ -6,52 +6,30 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-cd "$PROJECT_DIR"
+source "$SCRIPT_DIR/lib/post-utils.sh"
+
+cd "$(dirname "$SCRIPT_DIR")"
 
 TITLE="${1:-Untitled}"
 TAGS="${2:-일반}"
 CATEGORY="${3:-일반}"
 SUMMARY="${4:-}"
 
-# 파일명 생성
-FILENAME=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]//g' | tr ' ' '-' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//')
-if [ -z "$FILENAME" ]; then
-    FILENAME="post-$(date +%Y%m%d-%H%M%S)"
-fi
-
-DATE=$(date +%Y-%m-%d)
-FILEPATH="content/posts/${DATE}-${FILENAME}.md"
-
-# 태그 배열 생성
-IFS=',' read -ra TAG_ARRAY <<< "$TAGS"
-TAG_LIST=""
-for tag in "${TAG_ARRAY[@]}"; do
-    TAG_LIST="$TAG_LIST\"$(echo $tag | xargs)\", "
-done
-TAG_LIST="[${TAG_LIST%, }]"
+FILENAME=$(generate_filename "$TITLE")
+FILEPATH=$(generate_post_path "$FILENAME")
 
 # stdin에서 내용 읽기
 CONTENT=$(cat)
 
-# 자동 요약 생성 (첫 100자)
+# 자동 요약 생성 (첫 150자)
 if [ -z "$SUMMARY" ]; then
-    SUMMARY=$(echo "$CONTENT" | head -c 150 | tr '\n' ' ')...
+    SUMMARY="$(echo "$CONTENT" | head -c 150 | tr '\n' ' ')..."
 fi
 
 # 포스트 생성
-cat > "$FILEPATH" << EOF
----
-title: "$TITLE"
-date: $DATE
-draft: false
-tags: $TAG_LIST
-categories: ["$CATEGORY"]
-summary: "$SUMMARY"
----
-
-$CONTENT
-EOF
+generate_front_matter "$TITLE" "$TAGS" "$CATEGORY" "$SUMMARY" > "$FILEPATH"
+echo "" >> "$FILEPATH"
+echo "$CONTENT" >> "$FILEPATH"
 
 echo "Created: $FILEPATH"
 

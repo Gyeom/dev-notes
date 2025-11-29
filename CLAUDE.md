@@ -18,8 +18,11 @@ git push                  # 배포 (GitHub Actions 자동 실행)
 | `/draft` | 초안 작성 (draft: true) |
 | `/publish` | 초안을 발행 |
 | `/edit` | 기존 포스트 수정 |
+| `/delete` | 포스트 삭제 |
 | `/list` | 최근 포스트 목록 |
 | `/stats` | 블로그 통계 |
+| `/tag` | 태그 조회 및 관리 |
+| `/backup` | 포스트 백업 |
 | `/review` | 포스트 문체/SEO 검토 |
 | `/deploy` | 변경사항 배포 |
 | `/preview` | 로컬 미리보기 |
@@ -84,7 +87,11 @@ seo-optimizer로 SEO 분석해줘
 
 ```
 content/posts/    # 블로그 포스트
-scripts/          # 자동화 스크립트
+scripts/
+  lib/            # 공통 유틸리티
+  new-post.sh     # 새 포스트 생성
+  auto-post.sh    # 자동 포스팅
+  capture-screenshots.js  # 스크린샷 캡처
 .claude/
   commands/       # 슬래시 명령어
   skills/         # 자동 호출 스킬

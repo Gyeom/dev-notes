@@ -15,14 +15,18 @@ buildExpired = false
 
 [params]
   env = "production"
-  author = "Your Name"
+  author = "Gyeom"
   description = "개발 노트 및 기술 문서"
+  keywords = ["개발", "프로그래밍", "기술 블로그", "TIL", "Hugo"]
 
   # 테마 모드 (auto, light, dark)
   defaultTheme = "auto"
 
   # 검색 기능
   fuseOpts = { isCaseSensitive = false, shouldSort = true, location = 0, distance = 1000, threshold = 0.4, minMatchCharLength = 0, keys = ["title", "permalink", "summary", "content"] }
+
+  # Open Graph / Twitter Cards
+  images = ["/images/og-default.png"]
 
   # 홈페이지 설정
   [params.homeInfoParams]
@@ -33,6 +37,10 @@ buildExpired = false
   [[params.socialIcons]]
     name = "github"
     url = "https://github.com/Gyeom"
+
+  [[params.socialIcons]]
+    name = "rss"
+    url = "/index.xml"
 
 # 메뉴 설정
 [menu]
@@ -68,3 +76,13 @@ buildExpired = false
 
   [markup.goldmark.renderer]
     unsafe = true
+
+# Sitemap 설정
+[sitemap]
+  changefreq = "weekly"
+  filename = "sitemap.xml"
+  priority = 0.5
+
+# RSS 설정
+[services.rss]
+  limit = 20

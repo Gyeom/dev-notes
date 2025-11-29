@@ -4,37 +4,21 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/post-utils.sh"
+
+cd "$(dirname "$SCRIPT_DIR")"
+
 TITLE="${1:-Untitled}"
 TAGS="${2:-일반}"
 CATEGORY="${3:-일반}"
 
-# 파일명 생성 (한글 제거, 공백을 하이픈으로)
-FILENAME=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]//g' | tr ' ' '-' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//')
-if [ -z "$FILENAME" ]; then
-    FILENAME="post-$(date +%Y%m%d-%H%M%S)"
-fi
-
-DATE=$(date +%Y-%m-%d)
-FILEPATH="content/posts/${DATE}-${FILENAME}.md"
-
-# 태그 배열 생성
-IFS=',' read -ra TAG_ARRAY <<< "$TAGS"
-TAG_LIST=""
-for tag in "${TAG_ARRAY[@]}"; do
-    TAG_LIST="$TAG_LIST\"$(echo $tag | xargs)\", "
-done
-TAG_LIST="[${TAG_LIST%, }]"
+FILENAME=$(generate_filename "$TITLE")
+FILEPATH=$(generate_post_path "$FILENAME")
 
 # 포스트 생성
-cat > "$FILEPATH" << EOF
----
-title: "$TITLE"
-date: $DATE
-draft: false
-tags: $TAG_LIST
-categories: ["$CATEGORY"]
-summary: ""
----
+generate_front_matter "$TITLE" "$TAGS" "$CATEGORY" "" > "$FILEPATH"
+cat >> "$FILEPATH" << 'EOF'
 
 ## 개요
 
