@@ -2,7 +2,7 @@
 title: "AI 자동화 블로그 만들기 (1) - Hugo + GitHub Pages 구축"
 date: 2024-11-29
 draft: false
-tags: ["Hugo", "GitHub Pages", "GitHub Actions", "자동화", "블로그"]
+tags: ["Hugo", "GitHub Pages", "GitHub Actions", "자동화", "블로그", "Mermaid"]
 categories: ["개발환경"]
 series: ["AI 자동화 블로그"]
 summary: "Hugo + GitHub Actions로 마크다운만 push하면 자동 배포되는 블로그를 구축한다. 시리즈의 첫 번째 글."
@@ -232,12 +232,70 @@ gh auth refresh -h github.com -s workflow
 gh auth setup-git
 ```
 
+## Mermaid 다이어그램 지원
+
+플로우차트나 시퀀스 다이어그램을 마크다운에서 바로 작성할 수 있도록 Mermaid를 설정했다.
+
+### 렌더 훅 생성
+
+`layouts/_default/_markup/render-codeblock-mermaid.html`:
+
+```html
+<pre class="mermaid">
+{{- .Inner | safeHTML }}
+</pre>
+```
+
+마크다운의 ` ```mermaid ` 코드블록을 `<pre class="mermaid">` 태그로 변환한다.
+
+### Mermaid 스크립트 로드
+
+`layouts/partials/extend_footer.html`:
+
+```html
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+  const isDark = document.body.classList.contains('dark') ||
+                 document.documentElement.getAttribute('data-theme') === 'dark';
+
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDark ? 'dark' : 'default',
+    securityLevel: 'loose'
+  });
+
+  mermaid.run();
+</script>
+```
+
+PaperMod 테마의 `extend_footer.html` 파셜을 오버라이드해서 Mermaid ESM 모듈을 로드한다. 다크모드에 맞게 다이어그램 색상이 자동 전환된다.
+
+### 사용 예시
+
+````markdown
+```mermaid
+flowchart LR
+    A[마크다운 작성] --> B[Git Push] --> C[자동 배포]
+```
+````
+
+결과:
+
+```mermaid
+flowchart LR
+    A[마크다운 작성] --> B[Git Push] --> C[자동 배포]
+```
+
+---
+
 ## 결과
 
 - **사이트 URL**: https://gyeom.github.io/dev-notes/
 - **자동 배포**: main 브랜치에 push하면 1분 내 배포 완료
 - **다크모드**: 시스템 설정에 따라 자동 전환
 - **검색**: 전체 포스트 검색 지원
+- **다이어그램**: Mermaid로 플로우차트 지원
 
 이제 마크다운 파일만 작성하고 push하면 자동으로 블로그가 업데이트된다.
 
