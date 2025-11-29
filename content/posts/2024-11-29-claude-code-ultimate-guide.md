@@ -712,6 +712,10 @@ claude -p "테스트 실행하고 결과 알려줘" --max-turns 10
 
 모든 기능을 Hugo 블로그에 적용한 사례다.
 
+> 📦 **GitHub 저장소**: [Gyeom/dev-notes](https://github.com/Gyeom/dev-notes)
+>
+> 실제 사용 중인 설정 파일들을 확인할 수 있다.
+
 ### 프로젝트 구조
 
 ```
