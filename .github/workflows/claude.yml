@@ -67,33 +67,11 @@ jobs:
 
           # PR인 경우 맥락 정보 수집
           if [ "$IS_PR" = "true" ]; then
-            PR_INFO=$(gh pr view ${ISSUE_NUMBER} --json title,body,headRefName --jq '
-              "PR 제목: \(.title)\nPR 브랜치: \(.headRefName)\nPR 설명:\n\(.body)"
-            ')
+            PR_TITLE=$(gh pr view ${ISSUE_NUMBER} --json title --jq '.title')
+            PR_BRANCH=$(gh pr view ${ISSUE_NUMBER} --json headRefName --jq '.headRefName')
             PR_DIFF=$(gh pr diff ${ISSUE_NUMBER} --name-only | head -20)
-            PR_FILES_CONTENT=""
-            for file in $(gh pr diff ${ISSUE_NUMBER} --name-only | head -5); do
-              if [ -f "$file" ]; then
-                PR_FILES_CONTENT="${PR_FILES_CONTENT}\n\n--- ${file} ---\n$(head -200 "$file")"
-              fi
-            done
 
-            PROMPT="현재 PR #${ISSUE_NUMBER}에서 작업 중이다.
-
-${PR_INFO}
-
-변경된 파일 목록:
-${PR_DIFF}
-
-주요 파일 내용:
-${PR_FILES_CONTENT}
-
----
-
-사용자 요청:
-${USER_REQUEST}
-
-파일을 수정해야 한다면 Edit 도구를 사용해서 직접 수정해라."
+            PROMPT="현재 PR #${ISSUE_NUMBER}에서 작업 중이다. PR 제목: ${PR_TITLE}, 브랜치: ${PR_BRANCH}. 변경된 파일: ${PR_DIFF}. 사용자 요청: ${USER_REQUEST}. 파일을 수정해야 한다면 Edit 도구를 사용해서 직접 수정해라."
           else
             PROMPT="${USER_REQUEST}"
           fi
