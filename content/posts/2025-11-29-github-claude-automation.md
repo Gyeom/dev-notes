@@ -160,7 +160,15 @@ jobs:
 이슈를 생성하고 본문에 `@claude`를 멘션한다.
 
 ```
-@claude Kotlin Coroutines 기초 가이드 포스트를 content/posts/ 폴더에 작성해줘.
+@claude OpenFGA와 ReBAC(Relationship-Based Access Control)에 대한 포스트를 content/posts/ 폴더에 작성해줘.
+
+주요 내용:
+- ReBAC 개념과 기존 RBAC와의 차이점
+- OpenFGA 소개 및 아키텍처
+- 스키마 정의 방법 (DSL)
+- 관계 튜플과 권한 체크 방식
+- Spring Boot 연동 예시
+- 실제 사용 사례 (Google Drive, GitHub 등)
 ```
 
 ### Claude 응답 및 PR 생성
@@ -175,7 +183,7 @@ Claude가 파일을 생성하고 PR을 만든다.
 
 ![PR 상세](/dev-notes/images/github-claude-automation/04-pr-detail.png)
 
-PR에는 관련 이슈 링크(`Closes #3`)가 포함되어, 머지 시 이슈가 자동으로 닫힌다.
+PR에는 관련 이슈 링크(`Closes #7`)가 포함되어, 머지 시 이슈가 자동으로 닫힌다.
 
 ### 워크플로우 실행 로그
 
@@ -245,61 +253,13 @@ Claude API 호출 비용이 발생한다. 복잡한 요청일수록 토큰 사�
 
 ---
 
-## 7. 전체 흐름: 이슈 → PR → 머지 → 배포
+## 7. 배포 결과
 
-실제 Spring Framework 7.0 포스트 작성 요청을 예시로 전체 과정을 살펴본다.
+PR을 머지하면 GitHub Pages 배포 워크플로우가 자동 실행되고, 블로그에 새 포스트가 게시된다.
 
-### 1단계: 이슈 생성
+![블로그에 포스트 게시됨](/dev-notes/images/github-claude-automation/07-blog-main.png)
 
-![이슈 생성](/dev-notes/images/github-claude-automation/08-spring-issue-created.png)
-
-이슈를 생성하고 본문에 `@claude`를 멘션한다.
-
-```
-@claude Spring Framework 7.0과 Spring Boot 4.0의 주요 변경사항을 정리한 포스트를 작성해줘.
-```
-
-### 2단계: Claude AI Assistant 워크플로우 실행
-
-![워크플로우 실행 중](/dev-notes/images/github-claude-automation/09-actions-running.png)
-
-이슈가 생성되면 GitHub Actions가 자동으로 트리거된다.
-
-![워크플로우 상세](/dev-notes/images/github-claude-automation/10-workflow-running-detail.png)
-
-Claude가 요청을 처리하고 파일을 생성한다.
-
-### 3단계: PR 자동 생성
-
-![워크플로우 완료](/dev-notes/images/github-claude-automation/11-workflow-completed.png)
-
-워크플로우가 완료되면 PR이 자동으로 생성된다.
-
-![PR 목록](/dev-notes/images/github-claude-automation/12-pr-list.png)
-
-PR 목록에서 새로 생성된 PR을 확인할 수 있다.
-
-### 4단계: PR 리뷰 및 머지
-
-![PR 상세](/dev-notes/images/github-claude-automation/13-pr-detail.png)
-
-PR에서 변경 내용을 확인하고 리뷰한다. `Closes #5`가 포함되어 있어 머지 시 이슈가 자동으로 닫힌다.
-
-![PR 머지됨](/dev-notes/images/github-claude-automation/14-pr-merged.png)
-
-리뷰 후 머지하면 상태가 "Merged"로 변경되고, 연결된 이슈도 자동으로 Closed 된다.
-
-### 5단계: 자동 배포
-
-![배포 완료](/dev-notes/images/github-claude-automation/15-deploy-completed.png)
-
-머지되면 `Deploy Hugo site to GitHub Pages` 워크플로우가 자동으로 실행되어 블로그에 배포된다.
-
-### 6단계: 결과 확인
-
-![블로그에 포스트 게시됨](/dev-notes/images/github-claude-automation/16-blog-main.png)
-
-배포가 완료되면 블로그에서 새 포스트를 확인할 수 있다.
+전체 흐름이 완료되면 이슈도 자동으로 Close 된다.
 
 ---
 
