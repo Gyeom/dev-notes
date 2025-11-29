@@ -24,6 +24,13 @@ git push                  # 배포 (GitHub Actions 자동 실행)
 | `/deploy` | 변경사항 배포 |
 | `/preview` | 로컬 미리보기 |
 
+## MCP 서버
+
+| MCP | 설명 | 활용 예시 |
+|-----|------|----------|
+| `fetch` | URL 내용 가져오기 | "이 URL 내용 요약해서 포스팅해줘" |
+| `github` | GitHub 저장소 관리 | "최근 이슈 확인해줘", "PR 상태 알려줘" |
+
 ## Skills (자동 호출)
 
 Claude가 상황에 맞게 자동으로 사용한다.
@@ -57,6 +64,7 @@ scripts/          # 자동화 스크립트
   skills/         # 자동 호출 스킬
   agents/         # 명시적 호출 에이전트
   writing-guide.md
+.mcp.json         # MCP 서버 설정
 themes/PaperMod/  # Hugo 테마
 ```
 
