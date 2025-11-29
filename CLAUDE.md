@@ -14,7 +14,7 @@ git push                  # 배포 (GitHub Actions 자동 실행)
 
 | 명령어 | 설명 |
 |--------|------|
-| `/post` | 새 포스트 작성 및 배포 |
+| `/post` | 새 포스트 작성 |
 | `/draft` | 초안 작성 (draft: true) |
 | `/publish` | 초안을 발행 |
 | `/edit` | 기존 포스트 수정 |
@@ -25,9 +25,25 @@ git push                  # 배포 (GitHub Actions 자동 실행)
 | `/backup` | 포스트 백업 |
 | `/review` | 포스트 문체/SEO 검토 |
 | `/sync` | 작업 내용과 관련된 포스트 확인 |
-| `/deploy` | 변경사항 배포 |
+| `/pr` | 변경사항을 PR로 생성 (권장) |
+| `/deploy` | 변경사항 직접 배포 (main에 바로 push) |
 | `/preview` | 로컬 미리보기 |
 | `/screenshot` | 웹 페이지 스크린샷 캡처 |
+
+## 배포 워크플로우
+
+**권장: PR 기반 배포**
+```
+포스트 작성/수정 → /pr → PR에서 리뷰/보완 → merge → 자동 배포
+```
+
+- `/pr` 사용 시 PR에서 `@claude 보완해줘` 등으로 추가 수정 가능
+- merge 후 GitHub Actions가 자동 배포
+
+**빠른 배포 (리뷰 불필요 시)**
+```
+포스트 작성/수정 → /deploy → main에 직접 push → 자동 배포
+```
 
 ## MCP 서버
 
