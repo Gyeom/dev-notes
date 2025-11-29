@@ -55,7 +55,7 @@ jobs:
           PROMPT=$(echo "$COMMENT_BODY" | sed 's/.*@claude//')
 
           # Claude 실행 (파일 생성/수정 허용)
-          RESPONSE=$(claude -p "$PROMPT" --max-turns 10 2>&1) || true
+          RESPONSE=$(claude -p "$PROMPT" --max-turns 20 2>&1) || true
 
           # 변경사항 확인 및 PR 생성
           if [ -n "$(git status --porcelain)" ]; then
