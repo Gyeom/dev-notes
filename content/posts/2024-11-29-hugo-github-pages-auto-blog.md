@@ -4,17 +4,17 @@ date: 2024-11-29
 draft: false
 tags: ["Hugo", "GitHub Pages", "자동화", "블로그"]
 categories: ["개발환경"]
-summary: "Hugo와 GitHub Actions를 활용하여 마크다운 파일만 push하면 자동으로 배포되는 개발 블로그를 구축하는 방법을 정리합니다."
+summary: "Hugo + GitHub Actions로 마크다운만 push하면 자동 배포되는 블로그를 만들었다."
 ---
 
 ## 개요
 
 개발하면서 배운 것들을 정리하고 싶은데, 매번 수동으로 블로그에 올리기가 번거로웠다. Claude와 함께 작업한 내용을 자동으로 문서화하고 배포할 수 있는 시스템을 구축했다.
 
-**목표:**
-- 마크다운 파일 작성 → Git push → 자동 배포
+**목표**
+- 마크다운 작성 → Git push → 자동 배포
 - 미니멀한 디자인
-- 검색 기능 지원
+- 검색 기능
 
 ## 기술 스택
 
@@ -100,7 +100,7 @@ buildDrafts = false
 
 ### 5. GitHub Actions 워크플로우
 
-`.github/workflows/deploy.yml` 파일 생성:
+`.github/workflows/deploy.yml` 파일을 만든다.
 
 ```yaml
 name: Deploy Hugo site to GitHub Pages
@@ -169,7 +169,7 @@ gh api repos/USERNAME/dev-notes/pages -X POST -f build_type=workflow
 
 ## 자동 포스팅 스크립트
 
-새 포스트를 쉽게 생성하기 위한 스크립트:
+새 포스트 생성을 쉽게 하려고 스크립트를 만들었다.
 
 ```bash
 #!/bin/bash
@@ -208,7 +208,7 @@ hugo server -D
 
 ### PaperMod 테마 버전 호환성
 
-최신 PaperMod는 Hugo v0.146.0 이상을 요구한다. GitHub Actions에서 Hugo 버전을 맞춰줘야 한다:
+최신 PaperMod는 Hugo v0.146.0 이상이 필요하다. GitHub Actions 워크플로우에서 버전을 맞춰야 한다.
 
 ```yaml
 env:
@@ -217,7 +217,7 @@ env:
 
 ### GitHub Actions workflow 권한
 
-처음 푸시할 때 workflow 파일 권한 오류가 발생할 수 있다:
+처음 푸시할 때 workflow 파일 권한 오류가 발생할 수 있다. 이렇게 해결한다.
 
 ```bash
 # workflow 권한 추가
