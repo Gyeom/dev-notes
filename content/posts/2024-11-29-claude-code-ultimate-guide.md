@@ -601,10 +601,14 @@ dev-notes/
 │   │   └── preview.md
 │   ├── skills/                  # 자동 호출
 │   │   ├── auto-proofreader.md
-│   │   └── auto-tagger.md
-│   └── agents/                  # 명시적 호출
-│       ├── proofreader.md
-│       └── seo-optimizer.md
+│   │   ├── auto-tagger.md
+│   │   └── post-sync.md
+│   ├── agents/                  # 명시적 호출
+│   │   ├── proofreader.md
+│   │   ├── seo-optimizer.md
+│   │   └── post-reviewer.md
+│   └── knowledge/               # 참조 데이터
+│       └── post-index.md
 ├── .github/workflows/
 │   ├── deploy.yml               # Hugo 자동 배포
 │   └── claude.yml               # @claude 멘션
@@ -713,14 +717,44 @@ git push                  # 배포
 - `PreToolUse`: `git push` 전 Hugo 빌드 테스트 → 실패 시 push 차단
 - `PostToolUse`: 포스트 작성 후 안내 메시지 출력
 
+### Knowledge Base
+
+`.claude/knowledge/` 디렉토리에 참조 데이터를 저장한다.
+
+```
+.claude/knowledge/
+└── post-index.md    # 포스트 메타데이터 인덱스
+```
+
+**post-index.md 예시**
+
+```markdown
+## 전체 포스트 (5개)
+
+| 파일 | 제목 | 태그 |
+|------|------|------|
+| claude-code-anatomy.md | Claude Code 해부 | Claude Code, AI |
+| github-claude-automation.md | 이슈 기반 자동 포스팅 | GitHub Actions |
+
+## 태그별 분류
+
+### Claude Code
+- claude-code-anatomy.md
+- claude-code-ultimate-guide.md
+```
+
+`/index` 명령어로 인덱스를 갱신한다. `post-sync` Skill이 이 인덱스를 참조하여 관련 포스트를 찾는다.
+
 ### 역할 분담
 
 | 유형 | 이름 | 역할 |
 |------|------|------|
 | Skill | auto-proofreader | 포스트 작성 시 자동 문체 검사 |
 | Skill | auto-tagger | 내용 기반 태그 자동 추천 |
+| Skill | post-sync | 작업 완료 후 관련 포스트 업데이트 확인 |
 | Agent | proofreader | 심층 문체 검토 |
 | Agent | seo-optimizer | SEO 분석 |
+| Agent | post-reviewer | 종합 검토 (문체 + SEO + 코드) |
 
 ### 사용 예시
 
@@ -924,8 +958,9 @@ Claude Code는 단순한 코드 생성 도구가 아니다.
 - `CLAUDE.md` - 프로젝트 메모리
 - `.claude/settings.json` - 권한 + Hooks
 - `.claude/commands/` - 커스텀 명령어
-- `.claude/skills/` - 자동 호출 기능
-- `.claude/agents/` - 심층 분석 기능
+- `.claude/skills/` - 자동 호출 기능 (post-sync 등)
+- `.claude/agents/` - 심층 분석 기능 (post-reviewer 등)
+- `.claude/knowledge/` - 참조 데이터 (post-index 등)
 - `.mcp.json` - MCP 서버 설정
 
 **필수 단축키**
