@@ -183,7 +183,7 @@ Claude가 파일을 생성하고 PR을 만든다.
 
 ![PR 상세](/dev-notes/images/github-claude-automation/04-pr-detail.png)
 
-PR에는 관련 이슈 링크(`Closes #7`)가 포함되어, 머지 시 이슈가 자동으로 닫힌다.
+PR에는 관련 이슈 링크(`Closes #9`)가 포함되어, 머지 시 이슈가 자동으로 닫힌다.
 
 ### 워크플로우 실행 로그
 
