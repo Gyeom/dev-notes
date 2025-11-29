@@ -7,7 +7,9 @@ categories: ["개발환경"]
 summary: "GitHub 이슈에서 @claude를 멘션하면 Claude가 코드를 작성하고 PR까지 자동 생성하는 워크플로우 구축 과정을 정리했다."
 ---
 
-GitHub 이슈에서 `@claude`를 멘션하면 Claude가 요청을 처리하고, 파일을 생성하고, PR까지 자동으로 올리는 워크플로우를 구축했다. 이 글에서는 전체 과정을 단계별로 정리한다.
+GitHub 이슈에서 `@claude`를 멘션하면 Claude가 요청을 처리하고, 파일을 생성하고, PR까지 자동으로 올리는 워크플로우를 구축했다.
+
+코드 작성, 문서 생성, 버그 수정 등 다양한 작업을 이슈 하나로 요청할 수 있다. 리뷰 프로세스를 유지하면서도 반복적인 작업을 자동화할 수 있어 생산성이 크게 향상된다.
 
 ## 완성된 워크플로우
 
@@ -37,6 +39,8 @@ GitHub Pages 배포
 
 ### Anthropic API 키 등록
 
+Claude API를 사용하려면 Anthropic API 키가 필요하다. [Anthropic Console](https://console.anthropic.com/)에서 발급받을 수 있다.
+
 GitHub 저장소 Settings > Secrets and variables > Actions에서 `ANTHROPIC_API_KEY`를 등록한다.
 
 ```bash
@@ -45,7 +49,7 @@ gh secret set ANTHROPIC_API_KEY --repo username/repo-name
 
 ### Actions 권한 설정
 
-PR 생성을 위해 Actions가 쓰기 권한을 가져야 한다.
+GitHub Actions가 PR을 생성하려면 쓰기 권한이 필요하다. 기본적으로 읽기 전용이므로 별도로 설정해야 한다.
 
 ```bash
 gh api repos/username/repo-name/actions/permissions/workflow \
@@ -57,6 +61,8 @@ gh api repos/username/repo-name/actions/permissions/workflow \
 ---
 
 ## 2. 워크플로우 파일 작성
+
+핵심이 되는 워크플로우 파일이다. 이슈 이벤트를 감지하고, Claude Code를 설치해 실행한 뒤, 변경사항이 있으면 PR을 생성한다.
 
 `.github/workflows/claude.yml`:
 
@@ -147,15 +153,20 @@ jobs:
 | `--max-turns 20` | 복잡한 작업을 위해 충분한 턴 수 확보 |
 | 브랜치 명명 | `claude/issue-{번호}-{타임스탬프}` 형식 |
 
+워크플로우는 `@claude` 멘션이 포함된 이슈나 코멘트에만 반응한다. 멘션 뒤의 텍스트를 프롬프트로 추출해 Claude에게 전달하고, 파일 변경이 발생하면 새 브랜치를 만들어 PR을 생성한다.
+
 ---
 
 ## 3. 실제 사용 예시
+
+실제로 이 워크플로우를 사용해 블로그 포스트를 자동 생성한 과정이다.
 
 ### 이슈 생성
 
 ![이슈 목록](/dev-notes/images/github-claude-automation/01-issues-list.png)
 ![이슈 상세](/dev-notes/images/github-claude-automation/02-issue-detail.png)
-이슈를 생성하고 본문에 `@claude`를 멘션한다.
+
+이슈를 생성하고 본문에 `@claude`를 멘션한다. 멘션 뒤에 원하는 작업을 자연어로 설명하면 된다.
 
 ```
 @claude OpenFGA와 ReBAC(Relationship-Based Access Control)에 대한 포스트를 content/posts/ 폴더에 작성해줘.
@@ -171,7 +182,7 @@ jobs:
 
 ### Claude 응답 및 PR 생성
 
-Claude가 파일을 생성하고 PR을 만든다.
+이슈가 생성되면 GitHub Actions가 트리거되고, Claude Code가 요청을 처리한다. 파일 생성이 완료되면 자동으로 PR이 만들어진다.
 
 ![PR 목록](/dev-notes/images/github-claude-automation/03-pr-list.png)
 
@@ -179,19 +190,19 @@ Claude가 파일을 생성하고 PR을 만든다.
 
 ![PR 상세](/dev-notes/images/github-claude-automation/04-pr-detail.png)
 
-PR에는 관련 이슈 링크(`Closes #9`)가 포함되어, 머지 시 이슈가 자동으로 닫힌다.
+PR 본문에 `Closes #9`가 포함되어 있어 머지 시 원본 이슈가 자동으로 닫힌다. 이렇게 이슈와 PR이 연결되어 작업 추적이 용이하다.
 
 ### 워크플로우 실행 로그
 
 ![워크플로우 실행](/dev-notes/images/github-claude-automation/06-workflow-run.png)
 
-Actions 탭에서 실행 로그를 확인할 수 있다.
+Actions 탭에서 워크플로우 실행 상태와 로그를 확인할 수 있다. 성공 여부, 실행 시간, 각 단계별 출력을 볼 수 있어 디버깅에 유용하다.
 
 ---
 
 ## 4. GITHUB_TOKEN 동작 원리
 
-별도 토큰 설정 없이 `${{ secrets.GITHUB_TOKEN }}`을 사용할 수 있는 이유가 궁금할 수 있다.
+워크플로우에서 `${{ secrets.GITHUB_TOKEN }}`을 별도 설정 없이 사용할 수 있다. 이 토큰이 어떻게 동작하는지 알아보자.
 
 ### 자동 생성 메커니즘
 
@@ -251,17 +262,17 @@ Claude API 호출 비용이 발생한다. 복잡한 요청일수록 토큰 사�
 
 ## 7. 배포 결과
 
-PR을 머지하면 GitHub Pages 배포 워크플로우가 자동 실행되고, 블로그에 새 포스트가 게시된다.
+PR을 머지하면 GitHub Pages 배포 워크플로우가 자동 실행된다. 빌드가 완료되면 블로그에 새 포스트가 게시된다.
 
 ![블로그에 포스트 게시됨](/dev-notes/images/github-claude-automation/07-blog-main.png)
 
-전체 흐름이 완료되면 이슈도 자동으로 Close 된다.
+Claude가 작성한 "OpenFGA와 ReBAC로 구현하는 관계 기반 권한 제어" 포스트가 블로그에 게시됐다. PR 본문에 `Closes #9`가 포함되어 있었기 때문에 머지와 동시에 원본 이슈도 자동으로 닫힌다.
 
 ---
 
 ## 결과
 
-GitHub 이슈에서 `@claude`를 멘션하는 것만으로 전체 파이프라인이 자동화됐다.
+이슈에서 `@claude`를 멘션하는 것만으로 코드 생성부터 배포까지 전체 파이프라인이 자동화됐다.
 
 ```
 이슈 생성 → Claude 실행 → PR 생성 → 리뷰/머지 → 배포 → 이슈 Close
