@@ -1,17 +1,24 @@
 ---
-title: "Hugo + GitHub Pages로 자동 포스팅 블로그 만들기"
+title: "AI 자동화 블로그 만들기 (1) - Hugo + GitHub Pages 구축"
 date: 2024-11-29
 draft: false
-tags: ["Hugo", "GitHub Pages", "자동화", "블로그"]
+tags: ["Hugo", "GitHub Pages", "GitHub Actions", "자동화", "블로그"]
 categories: ["개발환경"]
-summary: "Hugo + GitHub Actions로 마크다운만 push하면 자동 배포되는 블로그를 만들었다."
+series: ["AI 자동화 블로그"]
+summary: "Hugo + GitHub Actions로 마크다운만 push하면 자동 배포되는 블로그를 구축한다. 시리즈의 첫 번째 글."
+---
+
+> **시리즈**: AI 자동화 블로그 만들기
+> 1. **Hugo + GitHub Pages 구축** ← 현재 글
+> 2. [Claude Code로 이슈 기반 자동 포스팅](/dev-notes/posts/2025-11-29-github-claude-automation/)
+
 ---
 
 ## 개요
 
-개발하면서 배운 것들을 정리하고 싶은데, 매번 수동으로 블로그에 올리기가 번거로웠다. Claude와 함께 작업한 내용을 자동으로 문서화하고 배포할 수 있는 시스템을 구축했다.
+개발하면서 배운 것들을 정리하고 싶은데, 매번 수동으로 블로그에 올리기가 번거로웠다. 이 시리즈에서는 마크다운 블로그 구축부터 AI 자동화까지 전체 파이프라인을 구축한다.
 
-**목표**
+**이번 글의 목표**
 - 마크다운 작성 → Git push → 자동 배포
 - 미니멀한 디자인
 - 검색 기능
@@ -232,4 +239,12 @@ gh auth setup-git
 - **다크모드**: 시스템 설정에 따라 자동 전환
 - **검색**: 전체 포스트 검색 지원
 
-이제 마크다운 파일만 작성하고 push하면 자동으로 블로그가 업데이트된다!
+이제 마크다운 파일만 작성하고 push하면 자동으로 블로그가 업데이트된다.
+
+---
+
+## 다음 단계
+
+블로그 구축이 완료됐다. 다음 글에서는 GitHub 이슈에서 `@claude`를 멘션하면 Claude가 포스트를 작성하고 PR까지 자동 생성하는 워크플로우를 구축한다.
+
+👉 [AI 자동화 블로그 만들기 (2) - Claude Code로 이슈 기반 자동 포스팅](/dev-notes/posts/2025-11-29-github-claude-automation/)
