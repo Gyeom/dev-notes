@@ -81,6 +81,21 @@
             "command": "python3 /Users/a13801/dev-notes/scripts/update-index.py"
           }
         ]
+      },
+      {
+        "matcher": "Bash(git push:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '🚀 배포 완료! https://gyeom.github.io/dev-notes/ 에서 확인하세요.'"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": ".*",
+        "hooks": []
       }
     ]
   }

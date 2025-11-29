@@ -150,6 +150,28 @@ Claude Code는 두 곳에 파일을 저장한다.
 
 팀과 공유할 설정은 `settings.json`에, 개인 설정은 `settings.local.json`에 분리한다.
 
+### Config.json (선택)
+
+멀티 프로젝트나 복잡한 설정이 필요하면 `.claude/config.json`을 사용한다.
+
+```json
+{
+  "project": {
+    "name": "my-project",
+    "description": "프로젝트 설명"
+  },
+  "phases": {
+    "parallelExecution": true,
+    "requireCodeReview": true
+  },
+  "testing": {
+    "coverageThreshold": 80
+  }
+}
+```
+
+단순 프로젝트에서는 불필요하다. CLAUDE.md만으로 충분하다.
+
 ---
 
 ### 5. CLAUDE.md - 프로젝트 메모리
@@ -191,6 +213,37 @@ Claude Code는 두 곳에 파일을 저장한다.
 1. `~/.claude/CLAUDE.md` - 전역 (모든 프로젝트)
 2. `./CLAUDE.md` - 프로젝트 (팀 공유)
 3. 세션 중 `#`으로 추가한 내용
+
+### Memory 외부화 전략
+
+전역과 프로젝트 메모리를 분리하면 효율적이다.
+
+**`~/.claude/CLAUDE.md` (전역)**
+```markdown
+# 개인 설정
+
+## 선호 스타일
+- 코드 주석은 영어로
+- 커밋 메시지는 한글로
+- 테스트 먼저 작성
+
+## 자주 쓰는 명령어
+- Tab: Extended Thinking
+- Ctrl+B: 백그라운드 실행
+```
+
+**`./CLAUDE.md` (프로젝트)**
+```markdown
+# 프로젝트명
+
+## 빌드
+npm run build
+
+## 규칙
+@.claude/coding-standards.md
+```
+
+전역에는 개인 워크플로우, 프로젝트에는 팀 규칙을 둔다.
 
 ---
 
@@ -383,17 +436,47 @@ security-reviewer 에이전트로 src/auth/ 폴더 검토해줘
 
 ---
 
-### 9. Hooks
+### 9. Subagent 패턴
+
+복잡한 작업을 독립된 컨텍스트에서 병렬로 실행한다.
+
+### 왜 Subagent인가?
+
+- 메인 컨텍스트가 오염되지 않음
+- 병렬 실행으로 시간 단축
+- 각 에이전트가 전문 영역에 집중
+
+### 사용 예시
+
+```markdown
+# /review 명령어에서 병렬 검토
+
+1. 포스트 찾기
+2. **Task tool로 병렬 실행**:
+   - proofreader 에이전트 (문체 검토)
+   - seo-optimizer 에이전트 (SEO 검토)
+3. 결과 종합
+```
+
+Task tool의 `subagent_type` 파라미터로 에이전트를 지정한다. 여러 Task를 동시에 호출하면 병렬로 실행된다.
+
+---
+
+### 10. Hooks
 
 특정 이벤트에서 자동으로 실행되는 스크립트다.
 
 ### 사용 가능한 이벤트
 
-- `PreToolUse` - 도구 실행 전
-- `PostToolUse` - 도구 실행 후
-- `PermissionRequest` - 권한 요청 시
-- `SessionStart` - 세션 시작
-- `SessionEnd` - 세션 종료
+| 이벤트 | 시점 | 용도 |
+|--------|------|------|
+| `PreToolUse` | 도구 실행 전 | 검증, 차단 |
+| `PostToolUse` | 도구 실행 후 | 후처리, 알림 |
+| `Notification` | 이벤트 알림 시 | 로깅, 모니터링 |
+| `Stop` | Claude 종료 시 | 정리 작업 |
+| `SubagentStop` | Subagent 종료 시 | 결과 처리 |
+| `PreCompact` | 컨텍스트 압축 전 | 중요 정보 보존 |
+| `UserPromptSubmit` | 사용자 입력 후 | 입력 추적 |
 
 ### 설정 예시
 
@@ -586,6 +669,42 @@ gh secret set ANTHROPIC_API_KEY --repo USERNAME/REPO
 @claude 코드 리뷰해줘
 @claude README 개선 제안해줘
 ```
+
+---
+
+### 12. Headless Mode (CI/CD)
+
+대화 없이 명령어를 실행하고 결과만 받는다.
+
+```bash
+# 기본 사용
+claude -p "README.md 요약해줘"
+
+# 출력 형식 지정
+claude -p "버그 분석해줘" --output-format json
+
+# 최대 턴 수 제한 (무한 루프 방지)
+claude -p "테스트 실행하고 결과 알려줘" --max-turns 10
+```
+
+### CI/CD 활용
+
+```yaml
+# GitHub Actions에서
+- name: Code Review
+  run: |
+    RESULT=$(claude -p "PR 변경사항 리뷰해줘" --max-turns 5)
+    echo "$RESULT" >> $GITHUB_STEP_SUMMARY
+```
+
+### 권장 max-turns
+
+| 작업 | max-turns |
+|------|-----------|
+| 단순 질문 | 3-5 |
+| 코드 리뷰 | 10-15 |
+| 버그 수정 | 15-20 |
+| 복잡한 리팩토링 | 30+ |
 
 ---
 
