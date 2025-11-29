@@ -7,9 +7,38 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
       "Bash(./scripts/*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
       "Read(content/**)",
-      "Write(content/**)"
+      "Write(content/**)",
+      "Edit(content/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git push:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/a13801/dev-notes && hugo --gc --minify > /dev/null 2>&1 || (echo 'Hugo build failed!' >&2 && exit 2)"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write(content/posts/*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '새 포스트가 작성되었습니다. /preview로 미리보기하거나 /deploy로 배포하세요.'"
+          }
+        ]
+      }
     ]
   }
 }
