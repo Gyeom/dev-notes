@@ -443,8 +443,35 @@ security-reviewer 에이전트로 src/auth/ 폴더 검토해줘
 ### 왜 Subagent인가?
 
 - 메인 컨텍스트가 오염되지 않음
-- 병렬 실행으로 시간 단축
+- 병렬 실행으로 시간 단축 (30-40% 비용/시간 절감)
 - 각 에이전트가 전문 영역에 집중
+
+### 병렬 vs 순차 실행
+
+**중요**: Task를 **같은 응답**에서 호출해야 병렬로 실행된다.
+
+```
+# 병렬 실행 (권장) - 동시에 완료
+Task 1: proofreader → 문체 검토
+Task 2: seo-optimizer → SEO 검토
+(두 Task를 하나의 응답에서 호출)
+
+# 순차 실행 - 시간 2배 소요
+응답 1: Task(proofreader)
+응답 2: Task(seo-optimizer)
+```
+
+### 모델별 작업 매핑
+
+Task tool의 `model` 파라미터로 비용과 성능을 최적화한다.
+
+| 모델 | 적합한 작업 | 비용 |
+|------|-------------|------|
+| `haiku` | 파일 찾기, 태그 검색 | 최저 |
+| `sonnet` | 분석, 리뷰 (기본값) | 중간 |
+| `opus` | 복잡한 추론, 창작 | 최고 |
+
+단순 검색에 haiku를 쓰면 비용을 크게 줄일 수 있다.
 
 ### 사용 예시
 
@@ -494,6 +521,11 @@ Task tool의 `subagent_type` 파라미터로 에이전트를 지정한다. 여�
     ],
     "PreToolUse": [
       {
+        "matchers": ["Bash(git commit:*)"],
+        "type": "command",
+        "command": "./scripts/check-sensitive.sh"
+      },
+      {
         "matchers": ["Bash(git push:*)"],
         "type": "command",
         "command": "npm test || exit 2"
@@ -502,6 +534,34 @@ Task tool의 `subagent_type` 파라미터로 에이전트를 지정한다. 여�
   }
 }
 ```
+
+### Security Hook 예시
+
+커밋 전 민감 정보를 검사하여 실수로 API 키나 토큰이 노출되는 것을 방지한다.
+
+```bash
+#!/bin/bash
+# scripts/check-sensitive.sh
+
+STAGED=$(git diff --cached --name-only | grep "\.md$")
+
+PATTERNS=(
+  'sk-[a-zA-Z0-9]{20,}'           # OpenAI API key
+  'ghp_[a-zA-Z0-9]{36}'           # GitHub PAT
+  'AKIA[0-9A-Z]{16}'              # AWS Access Key
+)
+
+for file in $STAGED; do
+  for pattern in "${PATTERNS[@]}"; do
+    if grep -qE "$pattern" "$file"; then
+      echo "⚠️ 민감 정보 의심: $file" >&2
+      exit 2
+    fi
+  done
+done
+```
+
+exit 2 반환 시 커밋이 차단된다.
 
 ### 반환값
 
@@ -900,9 +960,9 @@ git push                  # 배포
 }
 ```
 
-### RAG 준비 (대규모 포스트)
+### 검색 고도화 로드맵
 
-포스트가 많아지면 벡터 검색을 도입한다.
+포스트가 많아지면 검색 방식을 단계적으로 업그레이드한다.
 
 ```
 .claude/knowledge/
@@ -911,11 +971,13 @@ git push                  # 배포
 └── schema.md       # 벡터 검색 스키마
 ```
 
-| 포스트 수 | 검색 방식 |
-|----------|----------|
-| ~50개 | 키워드/태그 검색 |
-| 50~100개 | SQLite FTS5 |
-| 100개+ | 벡터 임베딩 (Voyage-3 + sqlite-vec) |
+| 단계 | 포스트 수 | 검색 방식 | 토큰 절감 |
+|------|----------|----------|----------|
+| Phase 1 | ~50개 | 키워드/태그 검색 | 기본 |
+| Phase 2 | 50~100개 | SQLite FTS5 전문 검색 | ~20% |
+| Phase 3 | 100개+ | 벡터 임베딩 (sqlite-vec) | ~40% |
+
+Phase 3에서는 Semantic Search MCP를 도입하여 유사 컨텐츠 검색을 지원한다. 스키마는 `.claude/knowledge/schema.md`에 미리 정의해 둔다.
 
 ### 역할 분담
 

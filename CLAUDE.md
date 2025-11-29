@@ -135,6 +135,7 @@ themes/PaperMod/  # Hugo 테마
 
 ## Hooks
 
+- **PreToolUse (git commit)**: 커밋 전 민감 정보 검사 (API 키, 토큰, 개인정보)
 - **PreToolUse (git push)**: 배포 전 Hugo 빌드 테스트 자동 실행
 - **PostToolUse (Write posts)**: 포스트 작성 후 다음 단계 안내
 - **PostToolUse (Edit posts)**: 포스트 수정 후 미리보기 안내
@@ -152,7 +153,16 @@ themes/PaperMod/  # Hugo 테마
 
 - 태그별 분류, 시리즈 정보, 핵심 키워드 포함
 - `/index` 명령어로 수동 갱신도 가능
-- 포스트 50개 이상 시 벡터 검색 도입 예정
+
+### 검색 고도화 로드맵
+
+| 단계 | 조건 | 방식 | 토큰 절감 |
+|------|------|------|----------|
+| Phase 1 | 현재 | 키워드 검색 (posts.json) | 기본 |
+| Phase 2 | 50개+ | SQLite FTS5 전문 검색 | ~20% |
+| Phase 3 | 100개+ | 벡터 검색 (sqlite-vec) | ~40% |
+
+Phase 3에서 Semantic Search MCP 도입을 고려한다. 상세 스키마는 `.claude/knowledge/schema.md` 참조.
 
 ## 권한 관리
 
@@ -193,6 +203,18 @@ claude mcp restart
 
 - 대규모 포스트 작업 시 `/compact`로 컨텍스트 압축
 - 백그라운드 작업은 `Ctrl+B`
+
+### 모델별 작업 매핑
+
+Task 도구 사용 시 `model` 파라미터로 비용과 성능을 최적화한다.
+
+| 모델 | 적합한 작업 | 예시 |
+|------|-------------|------|
+| `haiku` | 단순 검색, 파일 찾기 | 태그 검색, 포스트 목록 조회 |
+| `sonnet` | 분석, 코드 리뷰 | proofreader, seo-optimizer |
+| `opus` | 복잡한 추론, 창작 | 새 포스트 기획, 아키텍처 설계 |
+
+기본값은 `sonnet`. 비용 절감이 필요하면 간단한 작업에 `haiku` 사용을 고려한다.
 
 ### Extended Thinking 활용
 

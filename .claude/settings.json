@@ -46,6 +46,15 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Bash(git commit:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/a13801/dev-notes/scripts/check-sensitive.sh"
+          }
+        ]
+      },
+      {
         "matcher": "Bash(git push:*)",
         "hooks": [
           {
