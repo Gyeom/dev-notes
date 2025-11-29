@@ -25,6 +25,7 @@ git push                  # 배포 (GitHub Actions 자동 실행)
 | `/backup` | 포스트 백업 |
 | `/review` | 포스트 문체/SEO 검토 |
 | `/sync` | 작업 내용과 관련된 포스트 확인 |
+| `/index` | 포스트 인덱스 갱신 |
 | `/pr` | 변경사항을 PR로 생성 (권장) |
 | `/deploy` | 변경사항 직접 배포 (main에 바로 push) |
 | `/preview` | 로컬 미리보기 |
@@ -99,6 +100,7 @@ seo-optimizer로 SEO 분석해줘
 |-------|------|
 | `proofreader` | 글쓰기 가이드 기반 심층 문체 검토 |
 | `seo-optimizer` | 제목/요약/태그/본문 SEO 분석 |
+| `post-reviewer` | 종합 검토 (문체 + SEO + 코드) |
 
 ## 프로젝트 구조
 
@@ -113,6 +115,7 @@ scripts/
   commands/       # 슬래시 명령어
   skills/         # 자동 호출 스킬
   agents/         # 명시적 호출 에이전트
+  knowledge/      # 포스트 인덱스, 참조 데이터
   writing-guide.md
 .mcp.json         # MCP 서버 설정
 themes/PaperMod/  # Hugo 테마
@@ -147,7 +150,15 @@ themes/PaperMod/  # Hugo 테마
 ## Hooks
 
 - **PreToolUse (git push)**: 배포 전 Hugo 빌드 테스트 자동 실행
-- **PostToolUse (Write posts)**: 포스트 작성 후 안내 메시지
+- **PostToolUse (Write posts)**: 포스트 작성 후 다음 단계 안내
+- **PostToolUse (Edit posts)**: 포스트 수정 후 미리보기 안내
+
+## Knowledge Base
+
+`.claude/knowledge/post-index.md`에 포스트 인덱스가 저장된다.
+- `/index` 명령어로 갱신
+- 태그별 분류, 시리즈 정보 포함
+- 포스트 검색 및 연결 시 참조
 
 ## 사이트 URL
 

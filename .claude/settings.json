@@ -53,7 +53,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '새 포스트가 작성되었습니다. /preview로 미리보기하거나 /deploy로 배포하세요.'"
+            "command": "/Users/a13801/dev-notes/scripts/suggest-tags.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit(content/posts/*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '✏️ 포스트가 수정되었습니다. /preview로 확인하세요.'"
           }
         ]
       }
