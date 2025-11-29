@@ -1,0 +1,70 @@
+baseURL = 'https://USERNAME.github.io/dev-notes/'  # GitHub 사용자명으로 변경 필요
+languageCode = 'ko-kr'
+title = 'Dev Notes'
+theme = 'PaperMod'
+
+# 빌드 설정
+enableRobotsTXT = true
+buildDrafts = false
+buildFuture = false
+buildExpired = false
+
+# 페이지네이션
+[pagination]
+  pagerSize = 10
+
+[params]
+  env = "production"
+  author = "Your Name"
+  description = "개발 노트 및 기술 문서"
+
+  # 테마 모드 (auto, light, dark)
+  defaultTheme = "auto"
+
+  # 검색 기능
+  fuseOpts = { isCaseSensitive = false, shouldSort = true, location = 0, distance = 1000, threshold = 0.4, minMatchCharLength = 0, keys = ["title", "permalink", "summary", "content"] }
+
+  # 홈페이지 설정
+  [params.homeInfoParams]
+    Title = "Dev Notes"
+    Content = "개발하면서 배운 것들을 기록합니다."
+
+  # 소셜 아이콘
+  [[params.socialIcons]]
+    name = "github"
+    url = "https://github.com/USERNAME"
+
+# 메뉴 설정
+[menu]
+  [[menu.main]]
+    identifier = "posts"
+    name = "Posts"
+    url = "/posts/"
+    weight = 10
+
+  [[menu.main]]
+    identifier = "tags"
+    name = "Tags"
+    url = "/tags/"
+    weight = 20
+
+  [[menu.main]]
+    identifier = "search"
+    name = "Search"
+    url = "/search/"
+    weight = 30
+
+# 검색 페이지 출력 설정
+[outputs]
+  home = ["HTML", "RSS", "JSON"]
+
+# 마크다운 설정
+[markup]
+  [markup.highlight]
+    codeFences = true
+    guessSyntax = true
+    lineNos = true
+    style = "monokai"
+
+  [markup.goldmark.renderer]
+    unsafe = true
