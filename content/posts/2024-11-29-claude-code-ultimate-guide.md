@@ -140,6 +140,20 @@ claude --model opus   # CLI 옵션
 
 ### 5. 권한 설정
 
+Claude Code는 **보안**을 위해 기본적으로 도구 사용 전 사용자 승인을 요청한다. 파일 수정, 명령어 실행 등이 의도치 않은 결과를 초래할 수 있기 때문이다.
+
+### 승인 방식 선택
+
+| 방식 | 설명 |
+|------|------|
+| **Yes** | 이번만 허용 |
+| **Always allow** | 세션 동안 같은 유형 자동 허용 |
+| **No** | 거부 |
+
+### 자동 승인 설정
+
+매번 승인하기 번거로우면 설정 파일에서 자동 허용할 도구를 지정한다.
+
 `.claude/settings.json`:
 
 ```json
@@ -154,9 +168,6 @@ claude --model opus   # CLI 옵션
     "deny": [
       "Bash(rm -rf:*)",
       "Read(**/.env)"
-    ],
-    "ask": [
-      "Bash(git push:*)"
     ]
   }
 }
@@ -168,9 +179,42 @@ claude --model opus   # CLI 옵션
 Tool(action:pattern)
 
 - Bash(npm:*)        # npm 관련 모든 명령어 허용
+- Bash(git add:*)    # git add로 시작하는 명령어
 - Read(src/**)       # src 하위 모든 파일 읽기 허용
 - Write(*.md)        # 마크다운 파일만 쓰기 허용
+- Edit(content/**)   # content 하위 파일 편집 허용
 ```
+
+### MCP 도구 권한
+
+MCP 서버의 도구도 개별적으로 권한 설정이 가능하다.
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__github__list_issues",
+      "mcp__github__create_issue",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__fetch__fetch"
+    ]
+  }
+}
+```
+
+이렇게 설정하면 GitHub 이슈 조회/생성, Playwright 브라우저 조작, URL 내용 가져오기가 자동 승인된다.
+
+### 완전 자동 실행 모드
+
+**주의: 위험한 옵션이다.**
+
+```bash
+claude --dangerously-skip-permissions
+```
+
+모든 권한 확인을 건너뛴다. 신뢰할 수 있는 환경에서만 사용해야 한다.
 
 ### 설정 파일 위치
 
@@ -367,6 +411,53 @@ claude mcp remove <name> # 제거
 "배포 실패한 Actions 로그 분석해줘"
 ```
 
+### Playwright MCP - 브라우저 자동화
+
+웹 페이지 스크린샷, UI 테스트, 자동화 작업에 활용한다.
+
+```bash
+# 설치
+claude mcp add playwright -- npx @anthropic-ai/mcp-server-playwright
+```
+
+**주요 도구**
+
+| 도구 | 기능 |
+|------|------|
+| `browser_navigate` | URL 이동 |
+| `browser_snapshot` | 접근성 스냅샷 (상호작용용) |
+| `browser_take_screenshot` | 스크린샷 캡처 |
+| `browser_click` | 요소 클릭 |
+| `browser_type` | 텍스트 입력 |
+| `browser_resize` | 뷰포트 크기 조정 |
+
+**스크린샷 캡처 예시**
+
+```bash
+"GitHub 이슈 목록 캡처해줘"
+"배포된 블로그 메인 페이지 스크린샷 찍어줘"
+```
+
+불필요한 공백을 줄이려면 캡처 전 viewport를 조정한다.
+
+```javascript
+// viewport 조정 후 캡처
+browser_resize({ width: 1200, height: 500 })
+browser_take_screenshot({ filename: "issues.png" })
+
+// 특정 요소만 캡처
+browser_take_screenshot({
+  element: "main content",
+  ref: "main",
+  filename: "content.png"
+})
+```
+
+권장 viewport 높이:
+- 목록 페이지: 400-500px
+- 상세 페이지: 600-700px
+- 전체 페이지: `fullPage: true`
+
 ---
 
 ### 10. GitHub 연동
@@ -495,16 +586,38 @@ git push                  # 배포
 
 ### settings.json (권한 + Hooks)
 
+실제 프로젝트에서 사용 중인 설정이다.
+
 ```json
 {
   "permissions": {
     "allow": [
       "Bash(hugo:*)",
+      "Bash(hugo server:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git pull:*)",
+      "Bash(./scripts/*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr merge:*)",
       "Read(content/**)",
-      "Write(content/**)"
+      "Write(content/**)",
+      "Edit(content/**)",
+      "mcp__github__list_issues",
+      "mcp__github__create_issue",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_resize",
+      "mcp__fetch__fetch"
     ]
   },
   "hooks": {
@@ -518,12 +631,31 @@ git push                  # 배포
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write(content/posts/*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '새 포스트가 작성되었습니다. /preview로 미리보기하거나 /deploy로 배포하세요.'"
+          }
+        ]
+      }
     ]
   }
 }
 ```
 
-`git push` 전에 Hugo 빌드 테스트를 자동으로 실행한다. 빌드 실패 시 push가 차단된다.
+**권한 설정 포인트**
+- Hugo, Git, GitHub CLI 명령어 자동 허용
+- 포스트 파일(`content/**`) 읽기/쓰기/편집 자동 허용
+- MCP 도구(GitHub, Playwright, Fetch) 자동 허용
+- 승인 없이 블로그 작업에 집중할 수 있다
+
+**Hook 설정 포인트**
+- `PreToolUse`: `git push` 전 Hugo 빌드 테스트 → 실패 시 push 차단
+- `PostToolUse`: 포스트 작성 후 안내 메시지 출력
 
 ### 역할 분담
 
