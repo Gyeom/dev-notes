@@ -221,13 +221,26 @@ Claude Code는 **보안**을 위해 기본적으로 도구 사용 전 사용자 
       "Read(src/**)",
       "Write(src/**)"
     ],
+    "ask": [
+      "Bash(rm:*)",
+      "Bash(chmod:*)",
+      "Bash(git reset:*)",
+      "Bash(git push --force:*)"
+    ],
     "deny": [
-      "Bash(rm -rf:*)",
       "Read(**/.env)"
     ]
   }
 }
 ```
+
+### 권한 3단계
+
+| 권한 | 동작 | 용도 |
+|------|------|------|
+| **allow** | 자동 승인 | 안전한 반복 작업 |
+| **ask** | 실행 전 확인 | 위험하지만 필요한 명령어 |
+| **deny** | 차단 | 절대 실행 안 함 |
 
 ### 권한 규칙 문법
 
@@ -745,6 +758,42 @@ git push                  # 배포
 
 `/index` 명령어로 인덱스를 갱신한다. `post-sync` Skill이 이 인덱스를 참조하여 관련 포스트를 찾는다.
 
+### 자동 인덱싱
+
+포스트 작성/수정 시 Hook으로 인덱스가 자동 갱신된다.
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(content/posts/*)",
+        "hooks": [
+          { "command": "python3 scripts/update-index.py" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### RAG 준비 (대규모 포스트)
+
+포스트가 많아지면 벡터 검색을 도입한다.
+
+```
+.claude/knowledge/
+├── post-index.md   # 마크다운 (사람용)
+├── posts.json      # JSON (기계용)
+└── schema.md       # 벡터 검색 스키마
+```
+
+| 포스트 수 | 검색 방식 |
+|----------|----------|
+| ~50개 | 키워드/태그 검색 |
+| 50~100개 | SQLite FTS5 |
+| 100개+ | 벡터 임베딩 (Voyage-3 + sqlite-vec) |
+
 ### 역할 분담
 
 | 유형 | 이름 | 역할 |
@@ -939,6 +988,61 @@ claude -r <session-id> # 특정 세션 복원
 ```
 
 같은 프로젝트에서 작업을 이어갈 때 컨텍스트를 다시 설명할 필요 없다.
+
+---
+
+## Troubleshooting
+
+### Hugo 빌드 오류
+
+```
+Error: error building site: TOCSS: failed to transform
+```
+
+→ Hugo Extended 버전이 필요하다. `hugo version`으로 확인 후 Extended 버전을 설치한다.
+
+```
+Error: module "PaperMod" not found
+```
+
+→ `git submodule update --init --recursive`로 테마를 초기화한다.
+
+### Git 푸시 실패
+
+```
+Hook이 exit 2를 반환했습니다
+```
+
+→ `PreToolUse` Hook에서 빌드 실패. `hugo --gc --minify`를 수동 실행하여 오류를 확인한다.
+
+### MCP 연결 오류
+
+```
+MCP server 'github' failed to start
+```
+
+→ 환경변수 확인. `GITHUB_TOKEN`이 설정되어 있는지, 권한이 충분한지 확인한다.
+
+```bash
+echo $GITHUB_TOKEN
+gh auth status
+```
+
+### 권한 오류
+
+```
+Permission denied for tool: Bash(rm -rf:*)
+```
+
+→ `ask` 또는 `deny` 권한에 해당 명령어가 있다. 정말 필요하면 `settings.json`에서 `allow`로 이동한다.
+
+### 세션 복원 실패
+
+```
+Session not found: <id>
+```
+
+→ 세션 히스토리가 만료됨. `claude -c`로 가장 최근 세션을 시도한다.
 
 ---
 

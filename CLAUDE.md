@@ -154,6 +154,47 @@ themes/PaperMod/  # Hugo 테마
 - `/index` 명령어로 수동 갱신도 가능
 - 포스트 50개 이상 시 벡터 검색 도입 예정
 
+## 권한 관리
+
+- **allow**: 자동 승인 (hugo, git, 포스트 파일 등)
+- **ask**: 실행 전 확인 요청 (rm, chmod, git reset 등 위험 명령어)
+- **deny**: 차단 (설정 안 함)
+
+## Troubleshooting
+
+### Hugo 빌드 에러
+```bash
+# 모듈 에러
+hugo mod get -u
+
+# 캐시 초기화
+hugo --gc --cleanDestinationDir
+```
+
+### Git push 실패
+```bash
+# Hook에서 빌드 실패 시
+hugo --gc --minify  # 로컬에서 먼저 테스트
+
+# 충돌 시
+git pull --rebase origin main
+```
+
+### MCP 연결 에러
+```bash
+# MCP 상태 확인
+/mcp
+
+# 서버 재시작
+claude mcp restart
+```
+
+## 성능 팁
+
+- 대규모 포스트 작업 시 `/compact`로 컨텍스트 압축
+- 복잡한 분석은 `Tab`으로 Extended Thinking 활성화
+- 백그라운드 작업은 `Ctrl+B`
+
 ## 사이트 URL
 
 https://gyeom.github.io/dev-notes/

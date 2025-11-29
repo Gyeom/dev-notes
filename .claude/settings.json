@@ -1,5 +1,13 @@
 {
   "permissions": {
+    "ask": [
+      "Bash(rm:*)",
+      "Bash(rm -rf:*)",
+      "Bash(chmod:*)",
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)",
+      "Bash(git push --force:*)"
+    ],
     "allow": [
       "Bash(hugo:*)",
       "Bash(hugo server:*)",
