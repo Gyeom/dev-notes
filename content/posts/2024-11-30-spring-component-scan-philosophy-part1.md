@@ -127,6 +127,74 @@ fun main(args: Array<String>) {
 
 ---
 
+## Spring Boot의 설계 철학과 우리의 선택
+
+### Convention over Configuration
+
+Spring Boot는 [Convention over Configuration](https://docs.spring.io/spring-framework/reference/overview.html) 철학을 따른다. 개발자가 내려야 할 결정을 줄이고, 합리적인 기본값을 제공한다.
+
+> Spring Boot is opinionated. It provides sensible defaults so you can start quickly.
+
+이 철학은 `@SpringBootApplication` 하나로 애플리케이션이 동작하게 만든다. 클래스패스에 `spring-boot-starter-data-jpa`가 있으면 DataSource와 EntityManager가 자동 설정된다. 편리하지만, 프로젝트가 커지면 "무엇이 자동으로 되고 있는지" 파악하기 어려워진다.
+
+### AutoConfiguration.imports 파일
+
+Spring Boot의 자동 설정은 [`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`](https://docs.spring.io/spring-boot/reference/using/auto-configuration.html) 파일에 정의된다. Spring Boot 2.7부터 도입된 방식이다.
+
+```
+# spring-boot-autoconfigure.jar 내부
+org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+...
+```
+
+Spring Boot는 이 파일을 읽고, `@Conditional` 어노테이션으로 조건을 평가해서 필요한 빈만 등록한다.
+
+| 어노테이션 | 조건 |
+|-----------|------|
+| `@ConditionalOnClass` | 특정 클래스가 클래스패스에 있을 때 |
+| `@ConditionalOnMissingBean` | 해당 타입의 빈이 없을 때 |
+| `@ConditionalOnProperty` | 특정 프로퍼티가 설정되었을 때 |
+
+예를 들어 `DataSourceAutoConfiguration`은 `DataSource.class`가 클래스패스에 있고, 개발자가 직접 `DataSource` 빈을 정의하지 않았을 때만 동작한다.
+
+### 우리가 AutoConfiguration을 유지하는 이유
+
+`@EnableAutoConfiguration`을 제거하지 않은 이유가 있다.
+
+```kotlin
+@EnableAutoConfiguration  // 유지
+@Import(...)              // 우리 Config만 명시
+class VehiclePlatformApiApplication
+```
+
+**유지하는 자동 설정:**
+- `DataSourceAutoConfiguration` - HikariCP 커넥션 풀
+- `JpaRepositoriesAutoConfiguration` - Spring Data JPA
+- `KafkaAutoConfiguration` - Kafka 프로듀서/컨슈머
+- `RedisAutoConfiguration` - Redis 커넥션
+
+이들은 인프라 설정이다. Spring Boot가 제공하는 기본값이 충분히 좋고, 프로퍼티로 튜닝할 수 있다.
+
+**명시적으로 관리하는 것:**
+- 우리가 만든 어댑터 (`WebAdapterConfig`, `PersistenceAdapterConfig`)
+- UseCase 빈 (`UseCaseConfig`)
+- 비즈니스 로직에 관여하는 모든 것
+
+### 경계: 인프라 vs 비즈니스
+
+결국 경계는 **인프라**와 **비즈니스**다.
+
+| 구분 | 설정 방식 | 예시 |
+|------|----------|------|
+| 인프라 | AutoConfiguration (암묵적) | DataSource, JPA, Kafka, Redis |
+| 비즈니스 | @Import (명시적) | Controller, Adapter, UseCase |
+
+Spring Boot의 "opinionated defaults"는 인프라에서 빛을 발한다. 하지만 비즈니스 로직의 의존성은 코드에서 명시적으로 보여야 한다. [Spring 공식 문서](https://docs.spring.io/spring-boot/reference/using/auto-configuration.html)도 "Auto-configuration is always applied after user-defined beans have been registered"라고 명시한다. 개발자가 정의한 빈이 우선이다.
+
+---
+
 ## 어댑터별 Config 클래스
 
 ### Inbound Adapter: WebAdapterConfig
