@@ -19,9 +19,11 @@ series_order: 3
 
 ## 들어가며
 
-Spring 통합 테스트가 느린 이유는 단순하다. 테스트마다 전체 애플리케이션을 로드하기 때문이다. `@SpringBootApplication`이 모든 빈을 스캔하니 테스트에 불필요한 컴포넌트까지 띄운다.
+"테스트 한 번 돌리는데 1분씩 걸려요."
 
-앞선 글에서 다룬 Import 패턴은 테스트에서 진가를 발휘한다. 테스트 범위에 맞는 Config만 Import하면 필요한 빈만 로드된다. 어댑터 테스트는 3초, 전체 E2E 테스트도 10초면 충분하다.
+Spring 통합 테스트가 느려지는 패턴은 익숙하다. 테스트마다 전체 애플리케이션을 로드하고, 모든 빈이 초기화되기를 기다린다. `@SpringBootApplication`이 패키지 전체를 스캔하니 테스트에 불필요한 컴포넌트까지 띄우게 된다.
+
+앞선 글에서 다룬 Import 패턴은 테스트에서 진가를 발휘한다. 테스트 범위에 맞는 Config만 Import하면 필요한 빈만 로드된다. 어댑터만 테스트할 때는 어댑터 Config만, E2E 테스트에서만 전체 앱을 띄운다. 테스트 피드백 루프가 짧아지니 개발 속도도 빨라진다.
 
 ---
 
@@ -29,11 +31,11 @@ Spring 통합 테스트가 느린 이유는 단순하다. 테스트마다 전체
 
 `@SpringBootApplication`을 쓰면 모든 테스트가 전체 애플리케이션을 로드한다. Import 패턴을 쓰면 테스트 범위에 맞는 최소한의 컴포넌트만 로드한다.
 
-| 테스트 레벨 | Import 범위 | 컨테이너 | 실행 시간 |
+| 테스트 레벨 | Import 범위 | 컨테이너 | 상대 시간 |
 |------------|------------|----------|----------|
-| 어댑터 단위 | `PersistenceAdapterConfig` | PostgreSQL만 | ~3초 |
-| 서비스 통합 | 어댑터 + `UseCaseConfig` | PostgreSQL + Redis | ~5초 |
-| E2E | 전체 앱 + `TestConfig` | 전체 | ~10초 |
+| 어댑터 단위 | `PersistenceAdapterConfig` | PostgreSQL만 | 1x (기준) |
+| 서비스 통합 | 어댑터 + `UseCaseConfig` | PostgreSQL + Redis | ~2x |
+| E2E | 전체 앱 + `TestConfig` | 전체 | ~3x |
 
 ---
 
@@ -663,7 +665,7 @@ logging:
 
 **Import 패턴의 이점:**
 - 테스트 범위에 맞는 Config만 Import
-- 불필요한 빈 로드 시간 절약
+- 불필요한 빈 로드 없이 빠른 피드백
 - 테스트 격리 보장
 
 ---
