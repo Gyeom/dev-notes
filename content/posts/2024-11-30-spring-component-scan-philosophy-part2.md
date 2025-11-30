@@ -1,11 +1,11 @@
 ---
-title: "하나의 코드베이스, 세 개의 앱"
+title: "Spring 의존성 주입, 보이게 관리하기 (2) - 하나의 코드베이스, 세 개의 앱"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Multi-Module", "Configuration", "profiles.include"]
 categories: ["Spring"]
 summary: "같은 코드베이스에서 API 서버, Kafka 컨슈머, 배치 앱을 profiles.include로 구성하는 방법"
-series: ["Spring Boot 의존성을 눈에 보이게"]
+series: ["Spring 의존성 주입, 보이게 관리하기"]
 series_order: 2
 ---
 
@@ -14,6 +14,14 @@ series_order: 2
 1. [@SpringBootApplication을 버린 이유](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
 2. **하나의 코드베이스, 세 개의 앱** (현재 글)
 3. [Spring 통합 테스트, 빠르고 정확하게](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+
+---
+
+## 들어가며
+
+API 서버, Kafka 컨슈머, 배치 스케줄러. 세 가지 앱이 같은 도메인 로직을 사용하지만 진입점이 다르다. 코드를 복사할 것인가, 모놀리식으로 합칠 것인가?
+
+이 글에서는 `@Import`와 `profiles.include`를 활용해 하나의 코드베이스에서 여러 앱을 깔끔하게 구성하는 방법을 다룬다. Application 클래스만 보면 각 앱이 어떤 어댑터를 사용하는지 한눈에 파악된다.
 
 ---
 

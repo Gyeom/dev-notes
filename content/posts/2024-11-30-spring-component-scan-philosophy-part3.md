@@ -1,11 +1,11 @@
 ---
-title: "Spring 통합 테스트, 빠르고 정확하게"
+title: "Spring 의존성 주입, 보이게 관리하기 (3) - Spring 통합 테스트, 빠르고 정확하게"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Testing", "TestContainers", "Integration Test", "Kotest"]
 categories: ["Spring"]
 summary: "Import 패턴이 테스트를 어떻게 쉽게 만드는가. TestContainer, Mock 어댑터, 어댑터 레벨 테스트 전략"
-series: ["Spring Boot 의존성을 눈에 보이게"]
+series: ["Spring 의존성 주입, 보이게 관리하기"]
 series_order: 3
 ---
 
@@ -14,6 +14,14 @@ series_order: 3
 1. [@SpringBootApplication을 버린 이유](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
 2. [하나의 코드베이스, 세 개의 앱](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
 3. **Spring 통합 테스트, 빠르고 정확하게** (현재 글)
+
+---
+
+## 들어가며
+
+Spring 통합 테스트가 느린 이유는 단순하다. 테스트마다 전체 애플리케이션을 로드하기 때문이다. `@SpringBootApplication`이 모든 빈을 스캔하니 테스트에 불필요한 컴포넌트까지 띄운다.
+
+앞선 글에서 다룬 Import 패턴은 테스트에서 진가를 발휘한다. 테스트 범위에 맞는 Config만 Import하면 필요한 빈만 로드된다. 어댑터 테스트는 3초, 전체 E2E 테스트도 10초면 충분하다.
 
 ---
 

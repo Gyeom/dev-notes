@@ -1,21 +1,27 @@
 ---
-title: "@SpringBootApplication을 버린 이유"
+title: "Spring 의존성 주입, 보이게 관리하기 (1) - @SpringBootApplication을 버린 이유"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Hexagonal Architecture", "Component Scan", "아키텍처"]
 categories: ["Spring"]
 summary: "@SpringBootApplication 대신 @EnableAutoConfiguration + @Import 패턴을 사용하는 이유와 Hexagonal Architecture에서의 명시적 의존성 관리"
-series: ["Spring Boot 의존성을 눈에 보이게"]
+series: ["Spring 의존성 주입, 보이게 관리하기"]
 series_order: 1
 ---
 
-## 시리즈 소개
-
-이 시리즈는 실제 프로덕션 프로젝트에서 `@SpringBootApplication`을 버리고 `@EnableAutoConfiguration` + `@Import` 패턴을 선택한 이유를 다룬다.
+## 시리즈
 
 1. **@SpringBootApplication을 버린 이유** (현재 글)
 2. [하나의 코드베이스, 세 개의 앱](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
 3. [Spring 통합 테스트, 빠르고 정확하게](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+
+---
+
+## 들어가며
+
+"이 서비스가 어떤 빈을 주입받는지 알려면 어디를 봐야 하나요?"
+
+Spring Boot 프로젝트에서 자주 듣는 질문이다. `@SpringBootApplication`은 편리하지만, 프로젝트가 커지면 어떤 컴포넌트가 어디서 등록되는지 파악하기 어려워진다. 이 글에서는 `@ComponentScan`의 암묵적 동작을 걷어내고, 의존성을 명시적으로 드러내는 방법을 다룬다.
 
 ---
 
