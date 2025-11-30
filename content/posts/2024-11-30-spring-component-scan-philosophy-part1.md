@@ -1,5 +1,5 @@
 ---
-title: "Opinionated Spring Boot (1) - 빈을 조립한다"
+title: "Opinionated Spring Boot (1) - @ComponentScan의 함정"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Hexagonal Architecture", "Component Scan", "아키텍처"]
@@ -11,9 +11,9 @@ series_order: 1
 
 ## 시리즈
 
-1. **빈을 조립한다** (현재 글)
-2. [설정을 조립한다](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
-3. [테스트도 조립한다](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+1. **@ComponentScan의 함정** (현재 글)
+2. [멀티앱, 하나의 코드베이스](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
+3. [Mock 남용 없는 통합 테스트](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
 
 ---
 
@@ -351,4 +351,4 @@ API 앱과 Consumer 앱이 같은 UseCase 클래스를 공유하지만, 필요�
 
 ---
 
-**다음 글:** [설정을 조립한다](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
+**다음 글:** [멀티앱, 하나의 코드베이스](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)

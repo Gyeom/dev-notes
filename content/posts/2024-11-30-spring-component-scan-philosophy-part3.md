@@ -1,5 +1,5 @@
 ---
-title: "Opinionated Spring Boot (3) - 테스트도 조립한다"
+title: "Opinionated Spring Boot (3) - Mock 남용 없는 통합 테스트"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Testing", "TestContainers", "Integration Test", "Kotest"]
@@ -11,9 +11,9 @@ series_order: 3
 
 ## 시리즈
 
-1. [빈을 조립한다](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
-2. [설정을 조립한다](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
-3. **테스트도 조립한다** (현재 글)
+1. [@ComponentScan의 함정](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
+2. [멀티앱, 하나의 코드베이스](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
+3. **Mock 남용 없는 통합 테스트** (현재 글)
 
 ---
 
