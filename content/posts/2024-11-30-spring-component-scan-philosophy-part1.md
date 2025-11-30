@@ -1,11 +1,11 @@
 ---
-title: "Spring 의존성 주입, 보이게 관리하기 (1) - @SpringBootApplication을 버린 이유"
+title: "Opinionated Spring Boot (1) - @SpringBootApplication을 버린 이유"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Hexagonal Architecture", "Component Scan", "아키텍처"]
 categories: ["Spring"]
-summary: "@SpringBootApplication 대신 @EnableAutoConfiguration + @Import 패턴을 사용하는 이유와 Hexagonal Architecture에서의 명시적 의존성 관리"
-series: ["Spring 의존성 주입, 보이게 관리하기"]
+summary: "Spring Boot의 Convention over Configuration은 어디까지 받아들여야 하는가. @SpringBootApplication 대신 @EnableAutoConfiguration + @Import 패턴을 선택한 이유"
+series: ["Opinionated Spring Boot"]
 series_order: 1
 ---
 
@@ -19,13 +19,13 @@ series_order: 1
 
 ## 들어가며
 
-"이 서비스가 어떤 빈을 주입받는지 알려면 어디를 봐야 하나요?"
+Spring Boot는 스스로를 "opinionated"하다고 말한다. 합리적인 기본값을 제공하고, 개발자가 내려야 할 결정을 줄여준다. `@SpringBootApplication` 하나면 애플리케이션이 동작한다. 클래스패스에 라이브러리만 추가하면 자동으로 설정된다.
 
-Spring Boot 프로젝트에서 자주 듣는 질문이다. `@SpringBootApplication`은 편리하지만, 프로젝트가 커지면 어떤 컴포넌트가 어디서 등록되는지 파악하기 어려워진다. IDE가 빈을 찾아줘도, 그 빈이 어떤 Config에서 왔는지는 보이지 않는다.
+하지만 이 편리함에는 대가가 있다. "이 서비스가 어떤 빈을 주입받는지 알려면 어디를 봐야 하나요?" 프로젝트가 커지면 자주 듣는 질문이다. IDE가 빈을 찾아줘도, 그 빈이 어떤 Config에서 왔는지는 보이지 않는다.
 
-Hexagonal Architecture를 적용하면서 이 문제가 더 뚜렷해졌다. 어댑터가 늘어날수록 "이 앱에 어떤 어댑터가 붙어 있는가"를 파악하기 어려워졌다. 의존성이 코드에서 보이지 않으면, 변경의 영향 범위를 예측할 수 없다. 새 어댑터를 추가할 때 기존 앱에 영향이 가는지, 특정 어댑터를 제거해도 되는지 판단하기 어렵다.
+Hexagonal Architecture를 적용하면서 이 문제가 더 뚜렷해졌다. 어댑터가 늘어날수록 "이 앱에 어떤 어댑터가 붙어 있는가"를 파악하기 어려워졌다. Spring Boot의 Convention이 인프라 설정에서는 빛을 발하지만, 비즈니스 로직의 의존성까지 숨기면 문제가 된다. 변경의 영향 범위를 예측할 수 없고, 어댑터를 추가하거나 제거할 때 어떤 앱이 영향받는지 판단하기 어렵다.
 
-해결책은 단순하다. 암묵적인 것을 명시적으로 바꾸면 된다. `@ComponentScan`이 패키지를 훑는 대신, `@Import`로 필요한 Config만 명시한다. Application 클래스 하나만 보면 전체 빈 구성이 파악되는 구조다.
+이 시리즈는 Spring Boot의 "opinionated" 철학을 어디까지 받아들이고, 어디서부터 명시적으로 관리할지에 대한 이야기다. 핵심은 경계를 긋는 것이다. 인프라는 Convention을 따르고, 비즈니스는 코드에서 보이게 한다.
 
 ---
 

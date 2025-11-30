@@ -1,11 +1,11 @@
 ---
-title: "Spring 의존성 주입, 보이게 관리하기 (2) - 하나의 코드베이스, 세 개의 앱"
+title: "Opinionated Spring Boot (2) - 하나의 코드베이스, 세 개의 앱"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Multi-Module", "Configuration", "profiles.include"]
 categories: ["Spring"]
-summary: "같은 코드베이스에서 API 서버, Kafka 컨슈머, 배치 앱을 profiles.include로 구성하는 방법"
-series: ["Spring 의존성 주입, 보이게 관리하기"]
+summary: "Spring Boot의 profiles.include로 설정을 조합하고, @Import로 앱별 어댑터를 선택하는 멀티앱 구성 전략"
+series: ["Opinionated Spring Boot"]
 series_order: 2
 ---
 
@@ -21,9 +21,11 @@ series_order: 2
 
 API 서버, Kafka 컨슈머, 배치 스케줄러. 세 가지 앱이 같은 도메인 로직을 사용하지만 진입점이 다르다.
 
-흔히 떠오르는 선택지는 두 가지다. 코드를 복사하거나, 하나의 앱에 모든 기능을 넣거나. 전자는 중복이 생기고, 후자는 불필요한 의존성까지 끌고 다닌다. API 서버에 Kafka 리스너가 붙어 있을 이유가 없고, 배치 앱에 HTTP 컨트롤러가 있을 이유도 없다.
+Spring Boot의 opinionated한 접근은 "하나의 앱"을 가정한다. `@SpringBootApplication`은 패키지 전체를 스캔하고, `application.yml` 하나로 설정을 관리한다. 하지만 멀티앱 환경에서는 이 Convention이 오히려 걸림돌이 된다. API 서버에 Kafka 리스너가 붙어 있을 이유가 없고, 배치 앱에 HTTP 컨트롤러가 있을 이유도 없다.
 
-Hexagonal Architecture의 핵심은 "어댑터는 교체 가능해야 한다"는 것이다. 이 원칙을 앱 구성에도 적용했다. 도메인과 UseCase는 공유하되, 어댑터는 앱별로 필요한 것만 조립한다. `@Import`로 어댑터 Config를 선택하고, `profiles.include`로 설정 파일을 합성한다. Application 클래스만 보면 각 앱이 어떤 어댑터를 사용하는지 한눈에 파악된다.
+여기서 Spring Boot의 다른 Convention이 빛을 발한다. `profiles.include`로 설정 파일을 조합하고, `@Import`로 필요한 Config만 선택한다. Spring Boot가 제공하는 도구를 활용하되, "모든 것을 자동으로" 대신 "필요한 것만 명시적으로" 구성한다.
+
+Hexagonal Architecture의 "어댑터는 교체 가능해야 한다"는 원칙을 앱 구성에 적용한 결과다. 도메인과 UseCase는 공유하고, 어댑터는 앱별로 조립한다. Application 클래스만 보면 각 앱이 무엇을 사용하는지 한눈에 파악된다.
 
 ---
 

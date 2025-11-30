@@ -1,11 +1,11 @@
 ---
-title: "Spring 의존성 주입, 보이게 관리하기 (3) - Spring 통합 테스트, 빠르고 정확하게"
+title: "Opinionated Spring Boot (3) - Spring 통합 테스트, 빠르고 정확하게"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Testing", "TestContainers", "Integration Test", "Kotest"]
 categories: ["Spring"]
-summary: "Import 패턴이 테스트를 어떻게 쉽게 만드는가. TestContainer, Mock 어댑터, 어댑터 레벨 테스트 전략"
-series: ["Spring 의존성 주입, 보이게 관리하기"]
+summary: "프로덕션과 테스트의 빈 구성을 일치시키면서도 빠른 피드백을 얻는 테스트 전략. TestContainer와 Mock 어댑터 활용"
+series: ["Opinionated Spring Boot"]
 series_order: 3
 ---
 
@@ -21,11 +21,11 @@ series_order: 3
 
 "테스트 한 번 돌리는데 1분씩 걸려요."
 
-Spring 통합 테스트가 느려지는 패턴은 익숙하다. 테스트마다 전체 애플리케이션을 로드하고, 모든 빈이 초기화되기를 기다린다. `@SpringBootApplication`이 패키지 전체를 스캔하니 테스트에 불필요한 컴포넌트까지 띄우게 된다.
+Spring Boot의 opinionated한 테스트 설정은 `@SpringBootTest`로 전체 애플리케이션을 띄우는 것이다. 간단하지만, 프로젝트가 커지면 모든 빈이 초기화되기를 기다려야 한다. `@SpringBootApplication`이 패키지 전체를 스캔하니 테스트에 불필요한 컴포넌트까지 로드된다.
 
-하지만 테스트 속도보다 중요한 건 신뢰성이다. 테스트 환경과 프로덕션 환경의 빈 구성이 다르면, 테스트를 통과해도 프로덕션에서 실패할 수 있다. Mock을 남용하면 실제 동작과 괴리가 생긴다.
+테스트를 빠르게 만드는 흔한 방법은 Mock을 늘리는 것이다. 하지만 Mock을 남용하면 테스트와 프로덕션의 괴리가 생긴다. 테스트는 통과했는데 프로덕션에서 실패하는 상황, 경험해봤을 것이다.
 
-앞선 글에서 다룬 Import 패턴은 이 두 가지를 모두 해결한다. 테스트 범위에 맞는 Config만 Import하면 필요한 빈만 로드된다. 프로덕션과 같은 Config를 사용하되, 외부 의존성만 Mock 어댑터로 교체한다. 빈 구성이 일치하니 테스트 결과를 신뢰할 수 있고, 범위를 좁히니 피드백도 빠르다.
+앞선 글에서 다룬 `@Import` 패턴은 이 딜레마를 해결한다. 프로덕션과 같은 Config를 사용하되, 테스트 범위에 맞는 Config만 Import한다. 외부 API 같은 진짜 의존성만 Mock 어댑터로 교체하고, 나머지는 실제 빈을 쓴다. TestContainer로 실제 DB와 Redis를 띄우면 빈 구성이 프로덕션과 일치한다. 테스트 결과를 신뢰할 수 있고, 범위를 좁혀서 피드백도 빠르다.
 
 ---
 
