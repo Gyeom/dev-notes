@@ -23,9 +23,31 @@ API 서버, Kafka 컨슈머, 배치 스케줄러. 세 가지 앱이 같은 도�
 
 Spring Boot의 opinionated한 접근은 "하나의 앱"을 가정한다. `@SpringBootApplication`은 패키지 전체를 스캔하고, `application.yml` 하나로 설정을 관리한다. 하지만 멀티앱 환경에서는 이 Convention이 오히려 걸림돌이 된다. API 서버에 Kafka 리스너가 붙어 있을 이유가 없고, 배치 앱에 HTTP 컨트롤러가 있을 이유도 없다.
 
-여기서 Spring Boot의 다른 Convention이 빛을 발한다. `profiles.include`로 설정 파일을 조합하고, `@Import`로 필요한 Config만 선택한다. Spring Boot가 제공하는 도구를 활용하되, "모든 것을 자동으로" 대신 "필요한 것만 명시적으로" 구성한다.
+여기서 Spring Boot의 다른 Convention이 빛을 발한다. `profiles.include`로 설정 파일을 조합하고, `@Import`로 필요한 Config만 선택한다. Hexagonal Architecture의 "어댑터는 교체 가능해야 한다"는 원칙을 앱 구성에 적용한 결과다.
 
-Hexagonal Architecture의 "어댑터는 교체 가능해야 한다"는 원칙을 앱 구성에 적용한 결과다. 도메인과 UseCase는 공유하고, 어댑터는 앱별로 조립한다. Application 클래스만 보면 각 앱이 무엇을 사용하는지 한눈에 파악된다.
+---
+
+## Spring Boot가 제공하는 조합 도구
+
+Part 1에서 `@EnableAutoConfiguration` + `@Import`로 빈 등록을 명시적으로 관리했다. 멀티앱 환경에서는 설정 파일도 같은 원칙으로 관리해야 한다.
+
+Spring Boot는 [Externalized Configuration](https://docs.spring.io/spring-boot/reference/features/external-config.html) 기능으로 설정을 계층화한다. 그중 [`profiles.include`](https://docs.spring.io/spring-boot/reference/features/profiles.html#features.profiles.including)는 여러 설정 파일을 조합하는 Convention이다.
+
+```yaml
+spring:
+  profiles:
+    include: datasource, kafka, redis
+```
+
+이 한 줄로 `application-datasource.yml`, `application-kafka.yml`, `application-redis.yml`이 로드된다. 각 앱은 필요한 설정만 include한다.
+
+| 앱 | 필요한 설정 | 불필요한 설정 |
+|-----|----------|------------|
+| API | DB, Kafka Producer, Redis | Kafka Consumer |
+| Consumer | DB, Kafka Consumer | Redis, HTTP |
+| Outbox | DB, Kafka Producer | Redis, HTTP, Consumer |
+
+`@Import`가 빈 등록을 조합하듯, `profiles.include`가 설정 파일을 조합한다. Spring Boot의 Convention을 따르되, "모든 것을 자동으로" 대신 "필요한 것만 명시적으로" 구성하는 원칙이다.
 
 ---
 
@@ -249,22 +271,18 @@ spring:
 
 ## 환경별 설정 오버라이드
 
-각 설정 파일은 환경별로 값을 오버라이드한다.
-
-### application-datasource.yml
+Spring Boot의 [Multi-document Files](https://docs.spring.io/spring-boot/reference/features/external-config.html#features.external-config.files.multi-document) 기능으로 환경별 오버라이드를 같은 파일에서 처리한다.
 
 ```yaml
+# application-datasource.yml
+
 # Default (local)
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/vplat_int
-    username: vplat_int
-    password: ftdot42edoc
-    hikari:
-      maximum-pool-size: 10
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: create  # 로컬: 스키마 자동 생성
 
 ---
 spring.config.activate.on-profile: int
@@ -272,210 +290,98 @@ spring.config.activate.on-profile: int
 spring:
   datasource:
     url: jdbc:postgresql://common-int-main.rds.amazonaws.com/vplat_int
-    username: vplat_int
     password: ${POSTGRESQL_PASSWORD}
-    hikari:
-      maximum-pool-size: 30
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: validate  # 운영: 마이그레이션으로만 스키마 변경
 
 ---
 spring.config.activate.on-profile: real
 
 spring:
   datasource:
-    url: ${DATABASE_URL}
-    username: ${DATABASE_USERNAME}
+    url: ${DATABASE_URL}  # 프로덕션: 모든 민감 정보는 환경변수
     password: ${POSTGRESQL_PASSWORD}
+```
+
+**핵심 원칙:**
+- **local**: 편의성 우선. 하드코딩, 자동 스키마 생성
+- **int/stage**: 운영과 유사하게. 환경변수 + validate
+- **real**: 보안 최우선. 모든 민감 정보는 환경변수
+
+---
+
+## 앱별 설정 차이
+
+같은 설정 파일이라도 앱마다 값이 다를 수 있다.
+
+### DB Connection Pool
+
+```yaml
+# API App - application-datasource.yml
+spring:
+  datasource:
     hikari:
-      maximum-pool-size: 30
-      connection-timeout: 3000
+      maximum-pool-size: 30  # 동시 HTTP 요청 처리
+
+# Consumer App - application-datasource.yml
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 10  # Kafka 파티션 수에 맞춤
 ```
 
-### 환경별 특징
-
-| 환경 | DB URL | 자격증명 | Pool | DDL | 특징 |
-|------|--------|---------|------|-----|------|
-| local | localhost | 하드코딩 | 10 | create | 개발용 |
-| int | AWS RDS | 환경변수 | 30 | validate | 통합 환경 |
-| stage | AWS RDS | 환경변수 | 30 | validate | 스테이징 |
-| real | 환경변수 | 환경변수 | 30 | validate | 프로덕션 |
-| perf | AWS RDS | 하드코딩 | 30 | validate | 성능 테스트 |
-
-**local**: 빠른 개발을 위해 스키마를 자동 생성한다.
-**int/stage/real**: 스키마 변경은 마이그레이션으로만 한다. `validate`로 불일치 시 실패한다.
-**real**: 민감 정보는 환경변수로만 주입한다.
-
----
-
-## Kafka 환경별 설정
-
-### 로컬 vs 운영
+### Kafka 설정
 
 ```yaml
-# Default (local)
+# API App - Producer 설정
 spring:
   kafka:
-    platform:
-      bootstrap-servers: localhost:9092
-      producer:
-        security:
-          protocol: PLAINTEXT
+    producer:
+      acks: all
+      enable-idempotence: true
 
----
-spring.config.activate.on-profile: int
-
+# Consumer App - Consumer 설정
 spring:
   kafka:
-    platform:
-      bootstrap-servers: b-1.common-int-main.kafka.amazonaws.com:9096,b-2.common-int-main.kafka.amazonaws.com:9096
-      producer:
-        security:
-          protocol: SASL_SSL
-          sasl:
-            mechanism: SCRAM-SHA-512
-            jaas:
-              config: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"kafka\" password=\"${KAFKA_PASSWORD}\";"
+    consumer:
+      group-id: vplat-server
+      enable-auto-commit: false
 ```
 
-로컬에서는 보안 없이 빠르게 개발한다. 운영 환경에서는 SASL_SSL로 인증과 암호화를 적용한다.
-
-### Consumer Concurrency
-
-```yaml
-# Default (local)
-spring:
-  kafka:
-    platform:
-      consumer:
-        concurrency: 3  # 빠른 처리
-
----
-spring.config.activate.on-profile: stage
-
-spring:
-  kafka:
-    platform:
-      consumer:
-        concurrency: 1  # 순서 보장
-
----
-spring.config.activate.on-profile: real
-
-spring:
-  kafka:
-    platform:
-      consumer:
-        concurrency: 1  # 순서 보장
-```
-
-로컬에서는 빠른 처리를 위해 동시성을 높인다. 운영에서는 메시지 순서 보장을 위해 1로 제한한다.
-
----
-
-## 인증 설정 패턴
-
-### 환경별 서비스 인증
-
-```yaml
-# Default (local)
-service:
-  auth:
-    enabled: false
-    service-id: hubble
-    client-secret: change-me-in-production
-
----
-spring.config.activate.on-profile: int
-
-service:
-  auth:
-    enabled: true
-    allowed-services:
-      - service-id: hubble
-        client-secret: ${SERVICE_CLIENT_SECRET}
-      - service-id: test
-        client-secret: ${TEST_CLIENT_SECRET:test-secret-int}
-
----
-spring.config.activate.on-profile: real
-
-service:
-  auth:
-    enabled: true
-    allowed-services:
-      - service-id: hubble
-        client-secret: ${SERVICE_CLIENT_SECRET}
-```
-
-**local**: 인증 비활성. 개발 편의성 우선.
-**int**: 인증 활성 + 테스트용 서비스 추가. 기본값 제공 (`test-secret-int`).
-**real**: 인증 활성. 환경변수만 사용. 기본값 없음.
+앱 전용 설정은 각 앱 모듈의 `resources/`에, 공유 설정은 어댑터 모듈의 `resources/`에 위치한다.
 
 ---
 
 ## 기능 플래그
 
-### Kafka 이벤트 발행
+환경별로 기능을 On/Off한다.
 
 ```yaml
 # Default (local)
 kafka:
-  enabled: false  # 로컬에서는 Kafka 없이 개발
+  enabled: false  # 로컬: Kafka 없이 개발
+service:
+  auth:
+    enabled: false  # 로컬: 인증 비활성
 
 ---
 spring.config.activate.on-profile: int
 
 kafka:
   enabled: true
+service:
+  auth:
+    enabled: true
 
 ---
 spring.config.activate.on-profile: perf
 
 kafka:
-  enabled: false  # 성능 테스트 시 이벤트 발행 제외
+  enabled: false  # 성능 테스트: 순수 API 성능만 측정
 ```
 
-### 문서화 (SpringWolf)
-
-```yaml
-# Default
-springwolf:
-  enabled: true
-
----
-spring.config.activate.on-profile: perf
-
-springwolf:
-  enabled: false  # 성능 테스트 시 문서화 비활성
-```
-
-성능 테스트에서는 불필요한 기능을 끄고 순수 API 성능만 측정한다.
-
----
-
-## Outbox 앱 전용 설정
-
-```yaml
-outbox:
-  processor:
-    pending-check-interval-ms: 5000   # 대기 이벤트 확인 주기
-    retry-check-interval-ms: 60000    # 재시도 확인 주기
-    batch-size: 100                   # 배치 처리 크기
-    max-retry-count: 5                # 최대 재시도 횟수
-    cleanup-after-days: 7             # 완료 이벤트 보관 기간
-    min-age-seconds: 10               # 최소 대기 시간
-
-slack:
-  bot:
-    channel:
-      outbox-error: ${SLACK_OUTBOX_ERROR_CHANNEL:#vplat-outbox-alerts}
-  token: ${SLACK_BOT_TOKEN:}
-  enabled: ${SLACK_ENABLED:false}
-```
-
-Outbox 앱만의 설정이다. 이벤트 처리 실패 시 Slack으로 알림을 보낸다.
+로컬에서는 외부 의존성 없이 빠르게 개발한다. 운영에서는 모든 기능을 활성화한다.
 
 ---
 
@@ -495,13 +401,19 @@ Import 수가 적을수록 로드할 빈이 줄어든다. Outbox 앱은 스케�
 
 ## 정리
 
-`profiles.include`로 설정을 모듈화하면 멀티앱 환경을 깔끔하게 관리할 수 있다.
+Spring Boot의 opinionated한 접근이 "하나의 앱"을 가정한다면, 우리는 Spring Boot가 제공하는 다른 Convention으로 멀티앱을 구성했다.
+
+| 도구 | 역할 | Spring Boot Convention |
+|-----|------|----------------------|
+| `@Import` | 빈 등록 조합 | Part 1에서 다룸 |
+| `profiles.include` | 설정 파일 조합 | 본 글에서 다룸 |
+| `on-profile` | 환경별 오버라이드 | Multi-document Files |
 
 **핵심 원칙:**
-1. 앱 전용 설정과 공유 설정을 분리한다
-2. 환경별 오버라이드는 같은 파일 내에서 `on-profile`로 처리한다
-3. 민감 정보는 운영 환경에서만 환경변수로 주입한다
-4. 기능 플래그로 환경별 동작을 제어한다
+1. **빈 조합**: `@Import`로 앱별 어댑터 선택
+2. **설정 조합**: `profiles.include`로 앱별 설정 선택
+3. **환경 분리**: `on-profile`로 local/int/real 오버라이드
+4. **명시성**: Application 클래스와 application.yml만 보면 구성 파악
 
 다음 글에서는 이 구조가 테스트를 어떻게 쉽게 만드는지 다룬다.
 

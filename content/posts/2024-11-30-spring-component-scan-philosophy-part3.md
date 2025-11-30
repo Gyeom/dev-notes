@@ -19,9 +19,7 @@ series_order: 3
 
 ## 들어가며
 
-"테스트 한 번 돌리는데 1분씩 걸려요."
-
-Spring Boot의 opinionated한 테스트 설정은 `@SpringBootTest`로 전체 애플리케이션을 띄우는 것이다. 간단하지만, 프로젝트가 커지면 모든 빈이 초기화되기를 기다려야 한다. `@SpringBootApplication`이 패키지 전체를 스캔하니 테스트에 불필요한 컴포넌트까지 로드된다.
+Spring Boot의 opinionated한 테스트 설정은 `@SpringBootTest`로 전체 애플리케이션을 띄우는 것이다. 간단하지만, 프로젝트가 커지면 테스트 시작 시간이 늘어난다. `@SpringBootApplication`이 패키지 전체를 스캔하니 테스트에 불필요한 컴포넌트까지 로드된다.
 
 테스트를 빠르게 만드는 흔한 방법은 Mock을 늘리는 것이다. 하지만 Mock을 남용하면 테스트와 프로덕션의 괴리가 생긴다. 테스트는 통과했는데 프로덕션에서 실패하는 상황, 경험해봤을 것이다.
 
@@ -73,60 +71,36 @@ vp-core-api-app/
 
 ## TestContainer 기반 인프라
 
-### TestContainerConfig
+[Testcontainers](https://testcontainers.com/)로 실제 인프라를 Docker 컨테이너로 띄운다.
 
 ```kotlin
 class TestContainerConfig : ApplicationContextInitializer<ConfigurableApplicationContext> {
 
     companion object {
-        private val postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:15-alpine")
+        private val postgres = PostgreSQLContainer("postgres:15-alpine")
             .withDatabaseName("vplat_int")
-            .withUsername("test_user")
-            .withPassword("test_password")
             .withInitScript("test-schema.sql")
             .apply { start() }
 
-        private val redis: GenericContainer<*> = GenericContainer(
-            DockerImageName.parse("redis:7-alpine")
-        )
+        private val redis = GenericContainer(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(6379)
-            .withCommand(
-                "redis-server",
-                "--appendonly", "yes",
-                "--maxmemory", "256mb",
-                "--maxmemory-policy", "allkeys-lru"
-            )
-            .apply { start() }
-
-        private val kafka: KafkaContainer = KafkaContainer(
-            DockerImageName.parse("confluentinc/cp-kafka:7.4.0")
-        )
-            .withKraft()
             .apply { start() }
     }
 
     override fun initialize(ctx: ConfigurableApplicationContext) {
         TestPropertyValues.of(
             "spring.datasource.url=${postgres.jdbcUrl}",
-            "spring.datasource.username=${postgres.username}",
-            "spring.datasource.password=${postgres.password}",
             "spring.data.redis.host=${redis.host}",
-            "spring.data.redis.port=${redis.getMappedPort(6379)}",
-            "spring.kafka.bootstrap-servers=${kafka.bootstrapServers}"
+            "spring.data.redis.port=${redis.getMappedPort(6379)}"
         ).applyTo(ctx)
     }
 }
 ```
 
-**구성:**
-- **PostgreSQL 15**: 알파인 리눅스 (경량 이미지)
-- **Redis 7**: LRU 정책, 256MB 제한
-- **Kafka**: KRaft 모드 (Zookeeper 불필요)
-
-**특징:**
-- `companion object`로 싱글톤 유지. 여러 테스트 클래스가 같은 컨테이너를 공유한다.
-- `withInitScript`로 테스트 스키마를 자동 생성한다.
-- `ApplicationContextInitializer`로 Spring Context에 동적 프로퍼티를 주입한다.
+**핵심:**
+- `companion object`: 여러 테스트 클래스가 같은 컨테이너 공유
+- `ApplicationContextInitializer`: Spring Context에 동적 프로퍼티 주입
+- H2 대신 실제 PostgreSQL 사용 → 프로덕션과 동일한 SQL 문법
 
 ---
 
@@ -178,56 +152,28 @@ abstract class BaseTestContainerSpec(
 
 ## 데이터베이스 정리
 
-### DatabaseCleanup
+테스트 간 데이터 격리를 위해 매 테스트 전 테이블을 TRUNCATE한다.
 
 ```kotlin
 @Component
-class DatabaseCleanup {
-
-    @PersistenceContext
-    private lateinit var entityManager: EntityManager
-
+class DatabaseCleanup(
+    @PersistenceContext private val entityManager: EntityManager
+) {
     private val tableNames = mutableSetOf<String>()
 
     @Transactional
     fun execute() {
-        if (tableNames.isEmpty()) {
-            extractTableNames()
-        }
-
-        entityManager.flush()
-
-        for (tableName in tableNames) {
+        if (tableNames.isEmpty()) extractTableNames()
+        tableNames.forEach { table ->
             entityManager.createNativeQuery(
-                "TRUNCATE TABLE vplat.$tableName RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE vplat.$table RESTART IDENTITY CASCADE"
             ).executeUpdate()
         }
-    }
-
-    private fun extractTableNames() {
-        val query = entityManager.createNativeQuery("""
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = 'vplat'
-            AND table_type = 'BASE TABLE'
-        """)
-
-        @Suppress("UNCHECKED_CAST")
-        val result = query.resultList as List<String>
-        tableNames.addAll(result)
     }
 }
 ```
 
-**동작:**
-1. 첫 실행 시 `vplat` 스키마의 모든 테이블 이름 조회
-2. 매 테스트 전 `TRUNCATE ... RESTART IDENTITY CASCADE` 실행
-3. 테이블 캐싱으로 중복 조회 방지
-
-**이점:**
-- 테스트 간 데이터 격리 보장
-- Auto Increment ID 초기화
-- CASCADE로 FK 제약 조건 처리
+`RESTART IDENTITY CASCADE`로 Auto Increment ID 초기화와 FK 제약 조건을 함께 처리한다.
 
 ---
 
@@ -272,109 +218,50 @@ class TestConfig {
 
 ## Mock 어댑터
 
-### TestVdpServiceAdapter
+외부 API를 호출하는 어댑터만 Mock으로 교체한다.
 
 ```kotlin
 @Component("vdpServiceAdapter")
 @Primary
 class TestVdpServiceAdapter : VdpOut {
 
-    private val logger = LoggerFactory.getLogger(TestVdpServiceAdapter::class.java)
     private val deviceStore = mutableMapOf<String, VdpDeviceInfo>()
 
-    override fun registerDevice(
-        deviceSourceId: String,
-        deviceMobileNumber: String?,
-        vdpDeviceType: VdpDeviceType,
-        vdpSourceIdType: VdpDeviceSourceIdType,
-        hmgBrandType: String?
-    ): VdpDeviceInfo {
-        logger.info("Test mock: registerDevice - $deviceSourceId")
-
-        // 이미 등록된 디바이스 반환
+    override fun registerDevice(deviceSourceId: String, ...): VdpDeviceInfo {
         deviceStore[deviceSourceId]?.let { return it }
 
-        // 새 디바이스 생성
-        val deviceInfo = VdpDeviceInfo(
-            deviceId = UUID.randomUUID(),
-            isActivated = true
-        )
+        val deviceInfo = VdpDeviceInfo(deviceId = UUID.randomUUID(), isActivated = true)
         deviceStore[deviceSourceId] = deviceInfo
         return deviceInfo
     }
 
     override fun removeDevice(deviceId: UUID) {
-        logger.info("Test mock: removeDevice - $deviceId")
         deviceStore.entries.removeIf { it.value.deviceId == deviceId }
     }
-
-    override fun activateDevice(deviceId: UUID) {
-        logger.info("Test mock: activateDevice - $deviceId")
-    }
-
-    override fun deactivateDevice(deviceId: UUID) {
-        logger.info("Test mock: deactivateDevice - $deviceId")
-    }
 }
 ```
 
-**특징:**
+**핵심:**
 - `@Component("vdpServiceAdapter")`: 프로덕션과 같은 빈 이름
-- `@Primary`: 같은 이름의 빈이 있으면 이 빈이 우선
-- 인메모리 저장소로 상태 유지
-- 외부 VDP API 호출 없이 테스트 가능
-
-### TestVirtualVdpServiceAdapter
-
-```kotlin
-@Component("virtualVdpServiceAdapter")
-class TestVirtualVdpServiceAdapter : VdpOut {
-
-    override fun registerDevice(
-        deviceSourceId: String,
-        deviceMobileNumber: String?,
-        vdpDeviceType: VdpDeviceType,
-        vdpSourceIdType: VdpDeviceSourceIdType,
-        hmgBrandType: String?
-    ): VdpDeviceInfo {
-        return VdpDeviceInfo(
-            deviceId = UUID.randomUUID(),
-            isActivated = true
-        )
-    }
-
-    // 다른 메서드들...
-}
-```
-
-**차이:**
-- 상태 저장 없음. 매번 새 UUID 생성
-- Virtual Vehicle 시나리오 테스트용
+- `@Primary`: 테스트에서 이 빈이 우선
+- 인메모리 저장소로 외부 API 호출 없이 동작
 
 ### 빈 선택 메커니즘
 
 ```kotlin
-// UseCaseConfig에서 Qualifier로 구분
+// UseCaseConfig (프로덕션/테스트 공용)
 @Bean
 fun apiDeviceService(
-    @Qualifier("vdpServiceAdapter") vdpOut: VdpOut,  // TestVdpServiceAdapter
+    @Qualifier("vdpServiceAdapter") vdpOut: VdpOut,  // 테스트: TestVdpServiceAdapter
     // ...
 ): DeviceUseCase
-
-@Bean(name = ["virtualVehicleEventUseCase"])
-fun virtualVehicleEventService(
-    @Qualifier("virtualVdpServiceAdapter") vdpOut: VdpOut,  // TestVirtualVdpServiceAdapter
-    // ...
-): VehicleEventUseCase
 ```
 
-프로덕션의 빈 등록 로직이 그대로 동작한다. Mock 어댑터만 바뀐다.
+프로덕션의 Config가 그대로 동작한다. `@Primary`가 붙은 Mock만 교체된다.
 
 ---
 
 ## 통합 테스트 예제
-
-### DeviceIntegrationTest
 
 ```kotlin
 class DeviceIntegrationTest(
@@ -382,44 +269,17 @@ class DeviceIntegrationTest(
     databaseCleanup: DatabaseCleanup,
     private val objectMapper: ObjectMapper,
     private val deviceModelOut: DeviceModelOut,
-    private val vehicleOut: VehicleOut,
-    private val vehicleContainerOut: VehicleContainerOut
+    private val vehicleOut: VehicleOut
 ) : BaseTestContainerSpec(mockMvc, databaseCleanup) {
 
     init {
         Given("단말 정보가 주어진 상태에서") {
-            val deviceModelId = UUID.randomUUID()
-            val deviceModel = DeviceModel(
-                id = DeviceModelId(deviceModelId),
-                deviceModelName = "Test Model",
-                deviceType = "DOT42",
-                manufactureCompany = "Test Company",
-                deviceSourceIdType = "SERIAL_NO",
-                devicePipeLineType = "DEFAULT",
-                createdAt = OffsetDateTime.now(),
-                updatedAt = OffsetDateTime.now()
-            )
-            deviceModelOut.save(deviceModel)
-
-            val vehicleContainerId = VehicleContainerId.generate()
-            val vehicleContainer = VehicleContainer(
-                id = vehicleContainerId,
-                spec = VehicleSpecification.create("KNAB1234567890123")
-            )
-            vehicleContainerOut.save(vehicleContainer)
-
-            val vehicleId = VehicleId.generate()
-            val vehicle = Vehicle(
-                id = vehicleId,
-                vehicleContainerId = vehicleContainerId,
-                name = "Test Vehicle"
-            )
-            vehicleOut.save(vehicle)
-
+            val deviceModel = createTestDeviceModel()
+            val vehicle = createTestVehicle()
             val request = CreateDeviceRequest(
-                vehicleId = vehicleId.value,
+                vehicleId = vehicle.id.value,
                 deviceSourceId = "device-source-001",
-                deviceModelId = deviceModelId
+                deviceModelId = deviceModel.id.value
             )
 
             When("단말 생성 API를 호출하면") {
@@ -434,56 +294,16 @@ class DeviceIntegrationTest(
                 }
             }
         }
-
-        Given("존재하지 않는 단말 ID가 주어진 상태에서") {
-            val nonExistentDeviceId = UUID.randomUUID().toString()
-
-            When("단말 조회 API를 호출하면") {
-                Then("404 오류가 반환되어야 한다") {
-                    mockMvc.get("/api/v1/devices/{id}", nonExistentDeviceId) {
-                        contentType = MediaType.APPLICATION_JSON
-                    }.andExpect {
-                        status { isNotFound() }
-                    }
-                }
-            }
-        }
-
-        Given("중복된 deviceSourceId로 단말 생성 시") {
-            val duplicateSourceId = "duplicate-device-001"
-            createTestDevice("기존 단말", duplicateSourceId)
-
-            When("동일한 deviceSourceId로 단말 생성 API를 호출하면") {
-                Then("409 충돌 오류가 반환되어야 한다") {
-                    // 새 차량, 새 디바이스 모델로 요청
-                    val request = createDeviceRequest(duplicateSourceId)
-
-                    mockMvc.post("/api/v1/devices") {
-                        contentType = MediaType.APPLICATION_JSON
-                        content = objectMapper.writeValueAsString(request)
-                    }.andExpect {
-                        status { isConflict() }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun createTestDevice(name: String, deviceSourceId: String): UUID {
-        // 테스트 데이터 생성 헬퍼
     }
 }
 ```
 
 **테스트 패턴:**
-- Given: 사전 조건 설정 (DB에 테스트 데이터 삽입)
+- Given: 사전 조건 (DB에 테스트 데이터 삽입)
 - When: API 호출
 - Then: 응답 검증
 
-**의존성 주입:**
-- `mockMvc`: HTTP 요청/응답 처리
-- `databaseCleanup`: 테스트 간 데이터 정리
-- `deviceModelOut`, `vehicleOut`: 테스트 데이터 직접 삽입
+Port 인터페이스(`deviceModelOut`, `vehicleOut`)로 테스트 데이터를 직접 삽입한다. Repository가 아닌 Port를 쓰므로 도메인 로직을 거친다.
 
 ---
 
@@ -554,7 +374,7 @@ class DevicePersistenceAdapterTest(
 
 ## Consumer App 테스트
 
-### MockAdapterConfig
+Consumer App은 Feign 클라이언트를 MockK로 대체한다.
 
 ```kotlin
 @TestConfiguration
@@ -562,54 +382,21 @@ class MockAdapterConfig {
 
     @Bean
     @Primary
-    fun mockVdpServiceAdapter(): VdpServiceAdapter {
-        return mockk<VdpServiceAdapter>().apply {
-            every { registerDevice(any(), any(), any(), any(), any()) } returns
-                VdpDeviceInfo(deviceId = UUID.randomUUID(), isActivated = true)
-            every { removeDevice(any()) } returns Unit
-            every { activateDevice(any()) } returns Unit
-            every { deactivateDevice(any()) } returns Unit
-        }
+    fun mockVdpServiceAdapter(): VdpServiceAdapter = mockk<VdpServiceAdapter>().apply {
+        every { registerDevice(any(), any(), any(), any(), any()) } returns
+            VdpDeviceInfo(deviceId = UUID.randomUUID(), isActivated = true)
+        every { removeDevice(any()) } returns Unit
     }
-}
-```
-
-MockK를 사용해서 외부 API 클라이언트를 모킹한다.
-
-### TestExternalConfig
-
-```kotlin
-@TestConfiguration
-class TestExternalConfig {
 
     @Bean(name = ["vdpDeviceManagementClient"])
     @Primary
-    fun mockVdpDeviceManagementClient(): VdpDeviceManagementClient {
-        return mockk<VdpDeviceManagementClient>().apply {
-            every { activateDevice(any()) } returns DeviceDetailCommonFeignResponse(
-                deviceId = UUID.randomUUID()
-            )
-            every { retrieveDevices(any(), any(), any(), any(), any()) } returns VdpPageResponse(
-                items = listOf(),
-                pageInfo = VdpPageResponse.PageInfo(page = 0, size = 10, total = 0)
-            )
-            every { registerDevice(any()) } returns VdpRegisterDeviceOutput(
-                deviceId = UUID.randomUUID()
-            )
-        }
-    }
-
-    @Bean(name = ["deviceApiClient"])
-    @Primary
-    fun mockDeviceApiClient(): DeviceApiClient {
-        return mockk<DeviceApiClient>().apply {
-            every { getDeviceHealth() } returns Unit
-        }
+    fun mockVdpClient(): VdpDeviceManagementClient = mockk<VdpDeviceManagementClient>().apply {
+        every { activateDevice(any()) } returns DeviceDetailCommonFeignResponse(deviceId = UUID.randomUUID())
     }
 }
 ```
 
-Feign 클라이언트를 MockK로 대체한다. 실제 외부 API 호출 없이 테스트한다.
+API App의 Mock 어댑터와 달리 MockK를 사용한다. Feign 클라이언트는 인터페이스만 있고 구현이 없으므로, 인메모리 구현보다 MockK가 간편하다.
 
 ---
 
@@ -696,10 +483,35 @@ Import 패턴은 테스트를 쉽게 만든다.
 
 ## 시리즈 마무리
 
-이 시리즈에서 다룬 내용:
+### Opinionated, 하지만 선택적으로
 
-1. **Part 1**: `@SpringBootApplication` 대신 `@EnableAutoConfiguration` + `@Import`로 명시적 의존성 관리
-2. **Part 2**: `profiles.include`로 멀티앱 설정 합성
-3. **Part 3**: Import 패턴이 테스트를 쉽게 만드는 방법
+Spring Boot는 스스로를 "opinionated"하다고 말한다. 합리적인 기본값을 제공하고, 개발자가 내려야 할 결정을 줄여준다. 이 시리즈는 그 철학을 거부하는 것이 아니라, **어디까지 받아들일지** 경계를 정하는 이야기였다.
 
-핵심은 **명시적 의존성**이다. 암묵적으로 동작하는 것보다 코드에서 바로 보이는 것이 낫다.
+| 영역 | Spring Boot Convention | 우리의 선택 |
+|-----|----------------------|----------|
+| 인프라 설정 | AutoConfiguration | ✅ 따른다 |
+| 빈 등록 | @ComponentScan | ❌ @Import로 대체 |
+| 설정 파일 | 단일 application.yml | ❌ profiles.include로 조합 |
+| 테스트 | @SpringBootTest 전체 로드 | ❌ 범위별 Config Import |
+
+### 이 패턴이 적합한 상황
+
+- 프로젝트 규모가 커서 "무엇이 등록되는지" 파악이 어려울 때
+- 하나의 코드베이스에서 여러 앱을 운영할 때
+- 테스트 시작 시간이 문제가 될 때
+- Hexagonal Architecture로 어댑터를 명확히 분리할 때
+
+### 적합하지 않은 상황
+
+- 작은 프로젝트에서 빠르게 시작하고 싶을 때
+- 팀원 대부분이 Spring Boot Convention에 익숙할 때
+- @ComponentScan의 "암묵적 동작"이 문제가 되지 않을 때
+
+Spring Boot의 Convention over Configuration은 좋은 철학이다. 다만 **인프라**에는 Convention을, **비즈니스**에는 Configuration을 적용하는 것이 이 시리즈의 결론이다.
+
+### 참고 자료
+
+- [Spring Boot Reference - Auto-configuration](https://docs.spring.io/spring-boot/reference/using/auto-configuration.html)
+- [Spring Boot Reference - Externalized Configuration](https://docs.spring.io/spring-boot/reference/features/external-config.html)
+- [Spring Boot Reference - Profiles](https://docs.spring.io/spring-boot/reference/features/profiles.html)
+- [Testcontainers](https://testcontainers.com/)
