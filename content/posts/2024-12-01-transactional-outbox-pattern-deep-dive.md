@@ -1,13 +1,13 @@
 ---
-title: "Transactional Outbox 패턴 심층 분석: 분산 시스템에서 메시지 신뢰성 확보하기"
+title: "Transactional Outbox 패턴으로 메시지 발행 신뢰성 확보하기"
 date: 2024-12-01
 draft: false
 tags: ["Outbox", "Kafka", "Spring", "분산시스템", "이벤트-드리븐", "마이크로서비스", "CDC", "Debezium"]
 categories: ["백엔드"]
-summary: "마이크로서비스 환경에서 데이터베이스 트랜잭션과 메시지 발행의 원자성을 보장하는 Transactional Outbox 패턴을 심층 분석한다. Spring의 @TransactionalEventListener를 활용한 구현부터 Polling Publisher, CDC 방식 비교, 운영 전략까지 다룬다."
+summary: "DB 트랜잭션과 Kafka 메시지 발행의 원자성을 보장하는 Transactional Outbox 패턴을 정리한다. Spring @TransactionalEventListener 구현, Polling vs CDC 비교, 재시도 전략까지."
 ---
 
-마이크로서비스 아키텍처에서 가장 까다로운 문제 중 하나는 **데이터베이스 변경과 메시지 발행의 일관성**이다. 주문을 저장했는데 Kafka 메시지 발행이 실패하면? 반대로 메시지는 발행했는데 DB 커밋이 실패하면? 이 글에서는 이 문제를 해결하는 Transactional Outbox 패턴을 심층 분석한다.
+마이크로서비스 아키텍처에서 가장 까다로운 문제 중 하나는 **데이터베이스 변경과 메시지 발행의 일관성**이다. 주문을 저장했는데 Kafka 메시지 발행이 실패하면? 반대로 메시지는 발행했는데 DB 커밋이 실패하면? 이 글에서는 이 문제를 해결하는 Transactional Outbox 패턴을 정리한다.
 
 ## 문제: Dual Write Problem
 
