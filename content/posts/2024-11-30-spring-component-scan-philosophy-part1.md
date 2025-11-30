@@ -1,11 +1,11 @@
 ---
-title: "Spring 컴포넌트 스캔의 철학 (1) - @SpringBootApplication을 버리다"
+title: "@SpringBootApplication을 버린 이유"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Hexagonal Architecture", "Component Scan", "아키텍처"]
 categories: ["Spring"]
 summary: "@SpringBootApplication 대신 @EnableAutoConfiguration + @Import 패턴을 사용하는 이유와 Hexagonal Architecture에서의 명시적 의존성 관리"
-series: ["Spring 컴포넌트 스캔의 철학"]
+series: ["Spring Boot 의존성을 눈에 보이게"]
 series_order: 1
 ---
 
@@ -13,9 +13,9 @@ series_order: 1
 
 이 시리즈는 실제 프로덕션 프로젝트에서 `@SpringBootApplication`을 버리고 `@EnableAutoConfiguration` + `@Import` 패턴을 선택한 이유를 다룬다.
 
-1. **Part 1: @SpringBootApplication을 버리다** (현재 글)
-2. [Part 2: 멀티앱 설정 전략](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
-3. [Part 3: 테스트가 쉬워지는 구조](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+1. **@SpringBootApplication을 버린 이유** (현재 글)
+2. [하나의 코드베이스, 세 개의 앱](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
+3. [Spring 통합 테스트, 빠르고 정확하게](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
 
 ---
 
@@ -391,4 +391,4 @@ fun vehicleEventService(...): VehicleEventUseCase
 
 ---
 
-**다음 글:** [Part 2: 멀티앱 설정 전략](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
+**다음 글:** [하나의 코드베이스, 세 개의 앱](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)

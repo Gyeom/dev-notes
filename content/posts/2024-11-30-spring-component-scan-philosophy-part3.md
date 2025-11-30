@@ -1,19 +1,19 @@
 ---
-title: "Spring 컴포넌트 스캔의 철학 (3) - 테스트가 쉬워지는 구조"
+title: "Spring 통합 테스트, 빠르고 정확하게"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Testing", "TestContainers", "Integration Test", "Kotest"]
 categories: ["Spring"]
 summary: "Import 패턴이 테스트를 어떻게 쉽게 만드는가. TestContainer, Mock 어댑터, 어댑터 레벨 테스트 전략"
-series: ["Spring 컴포넌트 스캔의 철학"]
+series: ["Spring Boot 의존성을 눈에 보이게"]
 series_order: 3
 ---
 
 ## 시리즈
 
-1. [Part 1: @SpringBootApplication을 버리다](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
-2. [Part 2: 멀티앱 설정 전략](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
-3. **Part 3: 테스트가 쉬워지는 구조** (현재 글)
+1. [@SpringBootApplication을 버린 이유](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
+2. [하나의 코드베이스, 세 개의 앱](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
+3. **Spring 통합 테스트, 빠르고 정확하게** (현재 글)
 
 ---
 

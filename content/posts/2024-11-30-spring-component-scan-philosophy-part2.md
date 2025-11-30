@@ -1,19 +1,19 @@
 ---
-title: "Spring 컴포넌트 스캔의 철학 (2) - 멀티앱 설정 전략"
+title: "하나의 코드베이스, 세 개의 앱"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Multi-Module", "Configuration", "profiles.include"]
 categories: ["Spring"]
 summary: "같은 코드베이스에서 API 서버, Kafka 컨슈머, 배치 앱을 profiles.include로 구성하는 방법"
-series: ["Spring 컴포넌트 스캔의 철학"]
+series: ["Spring Boot 의존성을 눈에 보이게"]
 series_order: 2
 ---
 
 ## 시리즈
 
-1. [Part 1: @SpringBootApplication을 버리다](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
-2. **Part 2: 멀티앱 설정 전략** (현재 글)
-3. [Part 3: 테스트가 쉬워지는 구조](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+1. [@SpringBootApplication을 버린 이유](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
+2. **하나의 코드베이스, 세 개의 앱** (현재 글)
+3. [Spring 통합 테스트, 빠르고 정확하게](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
 
 ---
 
@@ -495,4 +495,4 @@ Import 패턴의 부가 효과로 앱 시작 시간이 줄어든다.
 
 ---
 
-**다음 글:** [Part 3: 테스트가 쉬워지는 구조](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+**다음 글:** [Spring 통합 테스트, 빠르고 정확하게](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
