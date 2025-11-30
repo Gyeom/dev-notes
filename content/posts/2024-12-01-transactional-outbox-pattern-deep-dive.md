@@ -7,7 +7,9 @@ categories: ["백엔드"]
 summary: "DB 트랜잭션과 Kafka 메시지 발행의 원자성을 보장하는 Transactional Outbox 패턴을 정리한다. Spring @TransactionalEventListener 구현, Polling vs CDC 비교, 재시도 전략까지."
 ---
 
-마이크로서비스 아키텍처에서 가장 까다로운 문제 중 하나는 **데이터베이스 변경과 메시지 발행의 일관성**이다. 주문을 저장했는데 Kafka 메시지 발행이 실패하면? 반대로 메시지는 발행했는데 DB 커밋이 실패하면? 이 글에서는 이 문제를 해결하는 Transactional Outbox 패턴을 정리한다.
+마이크로서비스 아키텍처에서 가장 까다로운 문제 중 하나는 **데이터베이스 변경과 메시지 발행의 일관성**이다. 주문을 저장했는데 Kafka 메시지 발행이 실패하면? 반대로 메시지는 발행했는데 DB 커밋이 실패하면?
+
+이 글에서는 이 문제를 해결하는 Transactional Outbox 패턴을 정리한다. 특히 전형적인 Polling/CDC 방식과 달리, **즉시 발행을 시도하고 Outbox를 실패 복구용으로 활용하는 하이브리드 방식**을 중심으로 설명한다.
 
 ## 문제: Dual Write Problem
 
@@ -179,6 +181,55 @@ flowchart TB
 | 이벤트 볼륨 | 낮음~중간 | 높음 |
 
 실무에서는 Polling Publisher로 시작해서 요구사항이 까다로워지면 CDC로 전환하는 경우가 많다.
+
+### 방식 3: 하이브리드 - 즉시 발행 + Outbox Fallback
+
+전형적인 Outbox 패턴은 **모든 이벤트**를 Polling이나 CDC로 발행한다. 하지만 실무에서는 다른 접근도 가능하다.
+
+> 트랜잭션 커밋 직후 **즉시 Kafka 발행을 시도**하고, Outbox는 **실패한 이벤트의 재시도용**으로만 사용한다.
+
+```mermaid
+sequenceDiagram
+    participant Service
+    participant DB
+    participant Kafka
+    participant Scheduler
+
+    Service->>DB: 1. Entity + Outbox 저장
+    DB->>DB: 2. COMMIT
+
+    Service->>Kafka: 3. 즉시 발행 시도 (AFTER_COMMIT)
+
+    alt 성공
+        Kafka-->>Service: ACK
+        Service->>DB: 4a. status = PUBLISHED
+    else 실패
+        Kafka--xService: Error
+        Service->>DB: 4b. status = FAILED
+        Note over Scheduler: 5초 후 재시도
+        Scheduler->>DB: 5. FAILED 이벤트 조회
+        Scheduler->>Kafka: 6. 재발행
+    end
+```
+
+**왜 이렇게 설계할까?**
+
+| 관점 | 전형적인 Polling | 하이브리드 방식 |
+|------|------------------|-----------------|
+| **지연** | 폴링 주기만큼 (5초) | 즉시 (성공 시 0초) |
+| **DB 부하** | 매번 PENDING 조회 | 실패 시에만 조회 |
+| **복잡도** | 단순 | Spring Event 연동 필요 |
+| **Outbox 역할** | 모든 이벤트 발행 | 실패 복구용 안전망 |
+
+대부분의 이벤트가 정상 발행되는 환경에서는 하이브리드 방식이 효율적이다. Kafka가 안정적이라면 99% 이상의 이벤트가 즉시 발행되고, Outbox Scheduler는 간헐적인 실패만 처리하게 된다.
+
+**트레이드오프**
+
+- 장점: 낮은 지연, 적은 DB 부하
+- 단점: `AFTER_COMMIT`에서 발행 실패 시 별도 트랜잭션으로 상태 업데이트 필요
+- 주의: 앱 크래시 대비를 위해 오래된 PENDING 이벤트도 스케줄러가 처리해야 함
+
+이 글에서는 하이브리드 방식을 중심으로 설명한다.
 
 ## Spring 구현: @TransactionalEventListener 활용
 
