@@ -1,5 +1,5 @@
 ---
-title: "Opinionated Spring Boot (2) - 하나의 코드베이스, 세 개의 앱"
+title: "Opinionated Spring Boot (2) - 설정을 조립한다"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Multi-Module", "Configuration", "profiles.include"]
@@ -11,9 +11,9 @@ series_order: 2
 
 ## 시리즈
 
-1. [@SpringBootApplication을 버린 이유](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
-2. **하나의 코드베이스, 세 개의 앱** (현재 글)
-3. [Spring 통합 테스트, 빠르고 정확하게](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+1. [빈을 조립한다](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
+2. **설정을 조립한다** (현재 글)
+3. [테스트도 조립한다](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
 
 ---
 
@@ -419,4 +419,4 @@ Spring Boot의 opinionated한 접근이 "하나의 앱"을 가정한다면, 우�
 
 ---
 
-**다음 글:** [Spring 통합 테스트, 빠르고 정확하게](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+**다음 글:** [테스트도 조립한다](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
