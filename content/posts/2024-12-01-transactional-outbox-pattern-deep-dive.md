@@ -186,50 +186,83 @@ flowchart TB
 
 전형적인 Outbox 패턴은 **모든 이벤트**를 Polling이나 CDC로 발행한다. 하지만 실무에서는 다른 접근도 가능하다.
 
-> 트랜잭션 커밋 직후 **즉시 Kafka 발행을 시도**하고, Outbox는 **실패한 이벤트의 재시도용**으로만 사용한다.
+> 트랜잭션 커밋 직후 **즉시 Kafka 발행을 시도**하고, Outbox 스케줄러는 **실패하거나 누락된 이벤트만** 처리한다.
 
 ```mermaid
-sequenceDiagram
-    participant Service
-    participant DB
-    participant Kafka
-    participant Scheduler
-
-    Service->>DB: 1. Entity + Outbox 저장
-    DB->>DB: 2. COMMIT
-
-    Service->>Kafka: 3. 즉시 발행 시도 (AFTER_COMMIT)
-
-    alt 성공
-        Kafka-->>Service: ACK
-        Service->>DB: 4a. status = PUBLISHED
-    else 실패
-        Kafka--xService: Error
-        Service->>DB: 4b. status = FAILED
-        Note over Scheduler: 5초 후 재시도
-        Scheduler->>DB: 5. FAILED 이벤트 조회
-        Scheduler->>Kafka: 6. 재발행
+flowchart TB
+    subgraph "트랜잭션"
+        A[비즈니스 로직] --> B[Entity 저장]
+        B --> C[Outbox 저장<br/>status=PENDING]
     end
+
+    C --> D{AFTER_COMMIT<br/>즉시 발행}
+
+    D -->|성공| E[status=PUBLISHED]
+    D -->|실패| F[status=FAILED]
+    D -->|앱 크래시| G[status=PENDING 유지]
+
+    subgraph "스케줄러 (Fallback)"
+        H[5초마다: 오래된 PENDING 조회]
+        I[60초마다: FAILED 재시도]
+    end
+
+    F --> I
+    G --> H
+    H --> D
+    I --> D
+
+    style E fill:#c8e6c9
+    style F fill:#ffcdd2
+    style G fill:#fff3e0
 ```
+
+이 방식의 핵심은 **이중 안전망**이다.
+
+1. **빠른 경로 (정상)**: AFTER_COMMIT → 즉시 Kafka 발행 → PUBLISHED
+2. **느린 경로 1 (발행 실패)**: FAILED 상태 → 스케줄러가 60초마다 재시도
+3. **느린 경로 2 (앱 크래시)**: PENDING 유지 → 스케줄러가 10초 이상 된 PENDING 처리
 
 **왜 이렇게 설계할까?**
 
 | 관점 | 전형적인 Polling | 하이브리드 방식 |
 |------|------------------|-----------------|
-| **지연** | 폴링 주기만큼 (5초) | 즉시 (성공 시 0초) |
-| **DB 부하** | 매번 PENDING 조회 | 실패 시에만 조회 |
+| **지연** | 폴링 주기만큼 (5초) | 즉시 (성공 시 0ms) |
+| **DB 부하** | 매번 전체 PENDING 조회 | 실패/누락 시에만 조회 |
 | **복잡도** | 단순 | Spring Event 연동 필요 |
 | **Outbox 역할** | 모든 이벤트 발행 | 실패 복구용 안전망 |
 
-대부분의 이벤트가 정상 발행되는 환경에서는 하이브리드 방식이 효율적이다. Kafka가 안정적이라면 99% 이상의 이벤트가 즉시 발행되고, Outbox Scheduler는 간헐적인 실패만 처리하게 된다.
+대부분의 이벤트가 정상 발행되는 환경에서는 하이브리드 방식이 효율적이다. Kafka가 안정적이라면 99% 이상의 이벤트가 즉시 발행되고, 스케줄러는 간헐적인 실패만 처리한다.
+
+**스케줄러의 두 가지 역할**
+
+```kotlin
+// 1. 오래된 PENDING 처리 (5초마다)
+// - AFTER_COMMIT이 실행되기 전에 앱이 크래시된 경우
+// - 10초 이상 PENDING 상태인 이벤트만 대상
+@Scheduled(fixedDelay = 5000)
+fun processDelayedPendingEvents() {
+    val events = outboxRepository.findByStatus(PENDING)
+        .filter { it.createdAt < now().minusSeconds(10) }  // 경쟁 상태 방지
+    // ...
+}
+
+// 2. FAILED 재시도 (60초마다)
+// - AFTER_COMMIT이나 스케줄러에서 Kafka 발행이 실패한 경우
+@Scheduled(fixedDelay = 60000)
+fun retryFailedEvents() {
+    val events = outboxRepository.findByStatus(FAILED)
+        .filter { it.nextRetryAt <= now() }  // 지수 백오프 적용
+    // ...
+}
+```
 
 **트레이드오프**
 
-- 장점: 낮은 지연, 적은 DB 부하
-- 단점: `AFTER_COMMIT`에서 발행 실패 시 별도 트랜잭션으로 상태 업데이트 필요
-- 주의: 앱 크래시 대비를 위해 오래된 PENDING 이벤트도 스케줄러가 처리해야 함
+- 장점: 낮은 지연, 적은 DB 부하, 앱 크래시에도 안전
+- 단점: `AFTER_COMMIT`에서 상태 업데이트 시 별도 트랜잭션 필요
+- 고려사항: PENDING 처리 시 AFTER_COMMIT과의 경쟁 상태 방지 로직 필요 (최소 대기 시간)
 
-이 글에서는 하이브리드 방식을 중심으로 설명한다.
+이 방식은 [Spring 공식 블로그](https://spring.io/blog/2023/10/24/a-use-case-for-transactions-adapting-to-transactional-outbox-pattern/)에서도 언급된 접근법이다. 이 글에서는 하이브리드 방식을 중심으로 설명한다.
 
 ## Spring 구현: @TransactionalEventListener 활용
 
