@@ -23,9 +23,52 @@ Spring Boot는 스스로를 "opinionated"하다고 말한다. 합리적인 기�
 
 하지만 이 편리함에는 대가가 있다. "이 서비스가 어떤 빈을 주입받는지 알려면 어디를 봐야 하나요?" 프로젝트가 커지면 자주 듣는 질문이다. IDE가 빈을 찾아줘도, 그 빈이 어떤 Config에서 왔는지는 보이지 않는다.
 
-Hexagonal Architecture를 적용하면서 이 문제가 더 뚜렷해졌다. 어댑터가 늘어날수록 "이 앱에 어떤 어댑터가 붙어 있는가"를 파악하기 어려워졌다. Spring Boot의 Convention이 인프라 설정에서는 빛을 발하지만, 비즈니스 로직의 의존성까지 숨기면 문제가 된다. 변경의 영향 범위를 예측할 수 없고, 어댑터를 추가하거나 제거할 때 어떤 앱이 영향받는지 판단하기 어렵다.
+Hexagonal Architecture를 적용하면서 이 문제가 더 뚜렷해졌다. 어댑터가 늘어날수록 "이 앱에 어떤 어댑터가 붙어 있는가"를 파악하기 어려워졌다. Spring Boot의 Convention이 인프라 설정에서는 빛을 발하지만, 비즈니스 로직의 의존성까지 숨기면 문제가 된다.
 
-이 시리즈는 Spring Boot의 "opinionated" 철학을 어디까지 받아들이고, 어디서부터 명시적으로 관리할지에 대한 이야기다. 핵심은 경계를 긋는 것이다. 인프라는 Convention을 따르고, 비즈니스는 코드에서 보이게 한다.
+이 시리즈는 Spring Boot의 "opinionated" 철학을 어디까지 받아들이고, 어디서부터 명시적으로 관리할지에 대한 이야기다.
+
+---
+
+## Spring Boot의 Convention over Configuration
+
+### AutoConfiguration의 동작 원리
+
+Spring Boot는 [Convention over Configuration](https://docs.spring.io/spring-framework/reference/overview.html) 철학을 따른다. 개발자가 내려야 할 결정을 줄이고, 합리적인 기본값을 제공한다.
+
+> Spring Boot is opinionated. It provides sensible defaults so you can start quickly.
+
+자동 설정의 핵심은 [`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`](https://docs.spring.io/spring-boot/reference/using/auto-configuration.html) 파일이다. Spring Boot 2.7부터 도입된 방식이다.
+
+```
+# spring-boot-autoconfigure.jar 내부
+org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+...
+```
+
+Spring Boot는 이 파일을 읽고, `@Conditional` 어노테이션으로 조건을 평가한다.
+
+| 어노테이션 | 조건 |
+|-----------|------|
+| `@ConditionalOnClass` | 특정 클래스가 클래스패스에 있을 때 |
+| `@ConditionalOnMissingBean` | 해당 타입의 빈이 없을 때 |
+| `@ConditionalOnProperty` | 특정 프로퍼티가 설정되었을 때 |
+
+예를 들어 `DataSourceAutoConfiguration`은 `DataSource.class`가 클래스패스에 있고, 개발자가 직접 `DataSource` 빈을 정의하지 않았을 때만 동작한다. [Spring 공식 문서](https://docs.spring.io/spring-boot/reference/using/auto-configuration.html)는 "Auto-configuration is always applied after user-defined beans have been registered"라고 명시한다. 개발자가 정의한 빈이 항상 우선이다.
+
+### 우리가 긋는 경계: 인프라 vs 비즈니스
+
+이 프로젝트에서는 경계를 **인프라**와 **비즈니스**로 나눴다.
+
+| 구분 | 설정 방식 | 예시 |
+|------|----------|------|
+| 인프라 | AutoConfiguration (암묵적) | DataSource, JPA, Kafka, Redis |
+| 비즈니스 | @Import (명시적) | Controller, Adapter, UseCase |
+
+**인프라**는 Spring Boot의 Convention을 따른다. DataSource, JPA, Kafka 설정은 Spring Boot가 제공하는 기본값이 충분히 좋고, `application.yml`로 튜닝할 수 있다.
+
+**비즈니스**는 명시적으로 관리한다. 어떤 Controller가 등록되는지, 어떤 Adapter가 활성화되는지, UseCase가 어떤 Port를 의존하는지는 코드에서 바로 보여야 한다.
 
 ---
 
@@ -94,8 +137,6 @@ project/
 
 ## 해결: @EnableAutoConfiguration + @Import
 
-Hexagonal Architecture를 적용한 프로젝트에서는 다른 접근을 한다.
-
 ```kotlin
 @EnableAutoConfiguration
 @Import(
@@ -123,75 +164,7 @@ fun main(args: Array<String>) {
 | 빈 제어 | 어려움 | Config 단위로 On/Off |
 | 멀티 앱 | 복잡 | 앱별 Config 조합 |
 
-`@EnableAutoConfiguration`은 Spring Boot의 자동 설정(DataSource, JPA, Kafka 등)을 유지한다. `@Import`로 우리가 만든 Config 클래스만 명시적으로 등록한다.
-
----
-
-## Spring Boot의 설계 철학과 우리의 선택
-
-### Convention over Configuration
-
-Spring Boot는 [Convention over Configuration](https://docs.spring.io/spring-framework/reference/overview.html) 철학을 따른다. 개발자가 내려야 할 결정을 줄이고, 합리적인 기본값을 제공한다.
-
-> Spring Boot is opinionated. It provides sensible defaults so you can start quickly.
-
-이 철학은 `@SpringBootApplication` 하나로 애플리케이션이 동작하게 만든다. 클래스패스에 `spring-boot-starter-data-jpa`가 있으면 DataSource와 EntityManager가 자동 설정된다. 편리하지만, 프로젝트가 커지면 "무엇이 자동으로 되고 있는지" 파악하기 어려워진다.
-
-### AutoConfiguration.imports 파일
-
-Spring Boot의 자동 설정은 [`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`](https://docs.spring.io/spring-boot/reference/using/auto-configuration.html) 파일에 정의된다. Spring Boot 2.7부터 도입된 방식이다.
-
-```
-# spring-boot-autoconfigure.jar 내부
-org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
-...
-```
-
-Spring Boot는 이 파일을 읽고, `@Conditional` 어노테이션으로 조건을 평가해서 필요한 빈만 등록한다.
-
-| 어노테이션 | 조건 |
-|-----------|------|
-| `@ConditionalOnClass` | 특정 클래스가 클래스패스에 있을 때 |
-| `@ConditionalOnMissingBean` | 해당 타입의 빈이 없을 때 |
-| `@ConditionalOnProperty` | 특정 프로퍼티가 설정되었을 때 |
-
-예를 들어 `DataSourceAutoConfiguration`은 `DataSource.class`가 클래스패스에 있고, 개발자가 직접 `DataSource` 빈을 정의하지 않았을 때만 동작한다.
-
-### 우리가 AutoConfiguration을 유지하는 이유
-
-`@EnableAutoConfiguration`을 제거하지 않은 이유가 있다.
-
-```kotlin
-@EnableAutoConfiguration  // 유지
-@Import(...)              // 우리 Config만 명시
-class VehiclePlatformApiApplication
-```
-
-**유지하는 자동 설정:**
-- `DataSourceAutoConfiguration` - HikariCP 커넥션 풀
-- `JpaRepositoriesAutoConfiguration` - Spring Data JPA
-- `KafkaAutoConfiguration` - Kafka 프로듀서/컨슈머
-- `RedisAutoConfiguration` - Redis 커넥션
-
-이들은 인프라 설정이다. Spring Boot가 제공하는 기본값이 충분히 좋고, 프로퍼티로 튜닝할 수 있다.
-
-**명시적으로 관리하는 것:**
-- 우리가 만든 어댑터 (`WebAdapterConfig`, `PersistenceAdapterConfig`)
-- UseCase 빈 (`UseCaseConfig`)
-- 비즈니스 로직에 관여하는 모든 것
-
-### 경계: 인프라 vs 비즈니스
-
-결국 경계는 **인프라**와 **비즈니스**다.
-
-| 구분 | 설정 방식 | 예시 |
-|------|----------|------|
-| 인프라 | AutoConfiguration (암묵적) | DataSource, JPA, Kafka, Redis |
-| 비즈니스 | @Import (명시적) | Controller, Adapter, UseCase |
-
-Spring Boot의 "opinionated defaults"는 인프라에서 빛을 발한다. 하지만 비즈니스 로직의 의존성은 코드에서 명시적으로 보여야 한다. [Spring 공식 문서](https://docs.spring.io/spring-boot/reference/using/auto-configuration.html)도 "Auto-configuration is always applied after user-defined beans have been registered"라고 명시한다. 개발자가 정의한 빈이 우선이다.
+`@EnableAutoConfiguration`은 Spring Boot의 인프라 자동 설정을 유지한다. `@Import`로 우리가 만든 Config 클래스만 명시적으로 등록한다.
 
 ---
 
@@ -275,59 +248,30 @@ class ClientAdapterConfig {
 }
 ```
 
-**등록되는 컴포넌트:**
-- `@FeignClient`: VdpServiceAdapter, VdpDeviceManagementClient
-- `@Component`: Adapter 클래스들
-
 Config 클래스에 Feign 공통 설정(타임아웃, 재시도)도 함께 정의한다.
 
-### Outbound Adapter: ProducerAdapterConfig
-
-Kafka 이벤트 발행을 담당한다.
+### Outbound Adapter: ProducerAdapterConfig / CacheAdapterConfig
 
 ```kotlin
 @Configuration
-@ComponentScan(
-    basePackages = ["sirius.vplat.adapter.outbound.producer"]
-)
+@ComponentScan(basePackages = ["sirius.vplat.adapter.outbound.producer"])
 class ProducerAdapterConfig
-```
 
-**등록되는 컴포넌트:**
-- `KafkaEventAdapter`: 실제 Kafka 발행
-- `NoOpEventAdapter`: 이벤트 발행 비활성 시 사용 (Null Object 패턴)
-
-### Outbound Adapter: CacheAdapterConfig
-
-Redis 캐싱을 담당한다.
-
-```kotlin
 @Configuration
-@ComponentScan(
-    basePackages = ["sirius.vplat.adapter.outbound.cache"]
-)
+@ComponentScan(basePackages = ["sirius.vplat.adapter.outbound.cache"])
 class CacheAdapterConfig {
-
     @Bean
-    fun redisTemplate(
-        connectionFactory: RedisConnectionFactory
-    ): RedisTemplate<String, Any> {
-        val template = RedisTemplate<String, Any>()
-        template.connectionFactory = connectionFactory
-        template.keySerializer = StringRedisSerializer()
-        template.valueSerializer = JdkSerializationRedisSerializer()
-        return template
+    fun redisTemplate(connectionFactory: RedisConnectionFactory): RedisTemplate<String, Any> {
+        // RedisTemplate 설정
     }
 }
 ```
-
-RedisTemplate 빈을 명시적으로 등록하고 Serializer를 커스터마이징한다.
 
 ---
 
 ## UseCase: Bean 메서드로 명시적 등록
 
-UseCase 클래스는 `@Service` 어노테이션을 붙이지 않는다. 대신 Config에서 `@Bean` 메서드로 등록한다.
+UseCase 클래스는 `@Service` 어노테이션을 붙이지 않는다. Config에서 `@Bean` 메서드로 등록한다.
 
 ```kotlin
 @Configuration
@@ -346,15 +290,8 @@ class UseCaseConfig {
         vehicleCategoryOut: VehicleCategoryOut,
         vehicleClassOut: VehicleClassOut
     ): DeviceUseCase = DeviceService(
-        deviceOut,
-        deviceModelOut,
-        vdpOut,
-        vehicleOut,
-        eventOut,
-        vehicleBrandOut,
-        vehicleModelOut,
-        vehicleCategoryOut,
-        vehicleClassOut
+        deviceOut, deviceModelOut, vdpOut, vehicleOut, eventOut,
+        vehicleBrandOut, vehicleModelOut, vehicleCategoryOut, vehicleClassOut
     )
 
     @Bean
@@ -364,25 +301,7 @@ class UseCaseConfig {
         deviceOut: DeviceOut,
         eventOut: EventOut
     ): VehicleUseCase = VehicleService(
-        vehicleContainerOut,
-        vehicleOut,
-        deviceOut,
-        eventOut
-    )
-
-    @Bean
-    fun metadataService(
-        vehicleBrandOut: VehicleBrandOut,
-        vehicleModelOut: VehicleModelOut,
-        vehicleCategoryOut: VehicleCategoryOut,
-        vehicleClassOut: VehicleClassOut,
-        deviceModelOut: DeviceModelOut
-    ): MetadataUseCase = MetadataService(
-        vehicleBrandOut,
-        vehicleModelOut,
-        vehicleCategoryOut,
-        vehicleClassOut,
-        deviceModelOut
+        vehicleContainerOut, vehicleOut, deviceOut, eventOut
     )
 }
 ```
@@ -391,7 +310,7 @@ class UseCaseConfig {
 
 **1. 의존성이 명시적으로 드러난다**
 
-`DeviceService`가 9개의 Port를 의존한다는 사실이 코드에서 바로 보인다. `@Service`를 쓰면 생성자를 열어봐야 알 수 있다.
+`DeviceService`가 9개의 Port를 의존한다는 사실이 코드에서 바로 보인다.
 
 **2. 같은 인터페이스의 여러 구현체를 다룰 수 있다**
 
@@ -399,66 +318,29 @@ class UseCaseConfig {
 @Bean
 fun apiDeviceService(
     @Qualifier("vdpServiceAdapter") vdpOut: VdpOut,  // 실제 VDP API
-    // ...
 ): DeviceUseCase = DeviceService(...)
 
 @Bean(name = ["virtualVehicleEventUseCase"])
 fun virtualVehicleEventService(
     @Qualifier("virtualVdpServiceAdapter") vdpOut: VdpOut,  // Virtual VDP
-    // ...
 ): VehicleEventUseCase = VirtualVehicleEventService(...)
 ```
 
-`VdpOut` 인터페이스에 두 가지 구현체가 있다.
-- `vdpServiceAdapter`: 실제 VDP 시스템 호출
-- `virtualVdpServiceAdapter`: 테스트/개발용 가상 구현
-
-`@Qualifier`로 어떤 구현체를 주입할지 명시한다. `@Service`와 `@Autowired`만으로는 이런 제어가 어렵다.
+`@Qualifier`로 어떤 구현체를 주입할지 명시한다.
 
 **3. 앱별로 다른 UseCase를 등록할 수 있다**
 
-API 앱의 UseCaseConfig:
-```kotlin
-@Bean
-fun apiDeviceService(...): DeviceUseCase
-@Bean
-fun vehicleService(...): VehicleUseCase
-@Bean
-fun metadataService(...): MetadataUseCase
-```
-
-Consumer 앱의 UseCaseConfig:
-```kotlin
-@Bean
-fun vehicleEventService(...): VehicleEventUseCase
-// deviceService, metadataService는 없음
-```
-
-같은 UseCase 클래스를 공유하지만, 앱별로 필요한 것만 등록한다.
-
----
-
-## 빈 등록 방식 정리
-
-| 방식 | Config 클래스 | 등록 방법 | 사용 사례 |
-|------|--------------|----------|----------|
-| **Component Scan** | WebAdapterConfig | `@RestController`, `@Component` | 컨트롤러, 필터 |
-| | PersistenceAdapterConfig | `@Repository`, `@Entity`, `@Adapter` | JPA 레포지토리 |
-| | ClientAdapterConfig | `@FeignClient`, `@Component` | Feign 클라이언트 |
-| | ProducerAdapterConfig | `@Component` | Kafka 어댑터 |
-| | CacheAdapterConfig | `@Component` + Bean 메서드 | Redis 캐시 |
-| **Bean 메서드** | UseCaseConfig | `@Bean` 메서드 | UseCase 구현체 |
-| | KafkaProducerConfig | `@Bean` 메서드 | Kafka 템플릿 |
-
-**어댑터**는 Component Scan으로 자동 등록한다. 어댑터 내부 구현은 프레임워크에 가깝고, 한 번 만들면 잘 바뀌지 않는다.
-
-**UseCase**는 Bean 메서드로 명시적 등록한다. 비즈니스 로직의 핵심이고, 의존성을 명확히 파악해야 한다.
+API 앱과 Consumer 앱이 같은 UseCase 클래스를 공유하지만, 필요한 것만 등록한다.
 
 ---
 
 ## 정리
 
-`@SpringBootApplication`은 간편하지만 의존성이 숨는다. Hexagonal Architecture에서는 `@EnableAutoConfiguration` + `@Import` 패턴으로 의존성을 명시적으로 관리한다.
+| 구분 | 방식 | 이유 |
+|------|------|------|
+| 인프라 (DataSource, Kafka) | AutoConfiguration | Spring Boot 기본값이 충분히 좋다 |
+| 어댑터 (Web, Persistence) | @Import + ComponentScan | 앱별로 필요한 어댑터만 조립 |
+| UseCase | @Bean 메서드 | 의존성을 명시적으로 드러냄 |
 
 **핵심 원칙:**
 1. Application 클래스만 보면 전체 구성을 파악할 수 있어야 한다
