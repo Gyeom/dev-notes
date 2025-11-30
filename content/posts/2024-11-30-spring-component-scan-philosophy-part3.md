@@ -483,6 +483,20 @@ Import 패턴은 테스트를 쉽게 만든다.
 
 ## 시리즈 마무리
 
+### Hexagonal Architecture와의 연결
+
+[Alistair Cockburn의 원문](https://alistair.cockburn.us/hexagonal-architecture/)에서 Hexagonal Architecture의 목표를 이렇게 정의한다:
+
+> "Allow an application to equally be driven by users, programs, automated test or batch scripts"
+
+사용자, 프로그램, **자동화된 테스트**가 동등하게 애플리케이션을 구동할 수 있어야 한다. 이 시리즈에서 다룬 패턴은 이 목표를 Spring Boot에서 구현하는 방법이다.
+
+- **Part 1**: Port/Adapter 경계를 `@Import`로 명시
+- **Part 2**: 같은 Port, 다른 Adapter 조합 (API앱 vs Consumer앱)
+- **Part 3**: Driven Adapter를 테스트용으로 교체
+
+Adapter를 쉽게 교체할 수 있으면 테스트도 쉬워진다. Mock Adapter는 Hexagonal Architecture의 핵심 이점이다.
+
 ### Opinionated, 하지만 선택적으로
 
 Spring Boot는 스스로를 "opinionated"하다고 말한다. 합리적인 기본값을 제공하고, 개발자가 내려야 할 결정을 줄여준다. 이 시리즈는 그 철학을 거부하는 것이 아니라, **어디까지 받아들일지** 경계를 정하는 이야기였다.
@@ -511,6 +525,8 @@ Spring Boot의 Convention over Configuration은 좋은 철학이다. 다만 **�
 
 ### 참고 자료
 
+- [Hexagonal Architecture - Alistair Cockburn](https://alistair.cockburn.us/hexagonal-architecture/)
+- [Hexagonal Architecture - Ports and Adapters Pattern](https://jmgarridopaz.github.io/content/hexagonalarchitecture.html)
 - [Spring Boot Reference - Auto-configuration](https://docs.spring.io/spring-boot/reference/using/auto-configuration.html)
 - [Spring Boot Reference - Externalized Configuration](https://docs.spring.io/spring-boot/reference/features/external-config.html)
 - [Spring Boot Reference - Profiles](https://docs.spring.io/spring-boot/reference/features/profiles.html)
