@@ -1,11 +1,11 @@
 ---
-title: "Opinionated Spring Boot (1) - @ComponentScan의 함정"
+title: "Selectively Opinionated Spring Boot (1) - @ComponentScan의 함정"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Hexagonal Architecture", "Component Scan", "아키텍처"]
 categories: ["Spring"]
 summary: "Spring Boot의 Convention over Configuration은 어디까지 받아들여야 하는가. @SpringBootApplication 대신 @EnableAutoConfiguration + @Import 패턴을 선택한 이유"
-series: ["Opinionated Spring Boot"]
+series: ["Selectively Opinionated Spring Boot"]
 series_order: 1
 ---
 

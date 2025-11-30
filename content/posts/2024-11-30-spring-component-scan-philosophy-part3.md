@@ -1,11 +1,11 @@
 ---
-title: "Opinionated Spring Boot (3) - Mock 남용 없는 통합 테스트"
+title: "Selectively Opinionated Spring Boot (3) - Mock 남용 없는 통합 테스트"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Testing", "TestContainers", "Integration Test", "Kotest"]
 categories: ["Spring"]
 summary: "프로덕션과 테스트의 빈 구성을 일치시키면서도 빠른 피드백을 얻는 테스트 전략. TestContainer와 Mock 어댑터 활용"
-series: ["Opinionated Spring Boot"]
+series: ["Selectively Opinionated Spring Boot"]
 series_order: 3
 ---
 

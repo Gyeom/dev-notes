@@ -1,11 +1,11 @@
 ---
-title: "Opinionated Spring Boot (2) - 멀티앱, 하나의 코드베이스"
+title: "Selectively Opinionated Spring Boot (2) - 멀티앱, 하나의 코드베이스"
 date: 2024-11-30
 draft: false
 tags: ["Spring", "Spring Boot", "Multi-Module", "Configuration", "profiles.include"]
 categories: ["Spring"]
 summary: "Spring Boot의 profiles.include로 설정을 조합하고, @Import로 앱별 어댑터를 선택하는 멀티앱 구성 전략"
-series: ["Opinionated Spring Boot"]
+series: ["Selectively Opinionated Spring Boot"]
 series_order: 2
 ---
 
