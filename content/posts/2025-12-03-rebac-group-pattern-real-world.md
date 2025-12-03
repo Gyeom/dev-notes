@@ -377,38 +377,60 @@ CREATE INDEX idx_subject ON tbl_relation_tuples(subject_type, subject_id, resour
 CREATE INDEX idx_resource ON tbl_relation_tuples(resource_type, resource_id);
 ```
 
-### 목록 조회 구현
+### 목록 조회 구현: 강제 그룹화
+
+핵심 아이디어는 **모든 리소스를 기본 그룹에 강제 소속**시키는 것이다.
+
+```
+# 모든 차량이 생성 시 자동으로 all 그룹에 연결됨
+vehicle:v1#parent@vehicle_group:all
+vehicle:v2#parent@vehicle_group:all
+vehicle:v3#parent@vehicle_group:all
+... (10,000대 모두)
+```
+
+이렇게 하면 목록 조회가 단순해진다.
 
 ```kotlin
 @Service
 class VehicleQueryService(
-    private val relationTupleRepository: RelationTupleRepository,
-    private val vehicleRepository: VehicleRepository
+    private val vehicleRepository: VehicleRepository,
+    private val authorizationService: AuthorizationService
 ) {
     fun getAccessibleVehicles(
         userId: UUID,
         companyCode: String,
         pageable: Pageable
     ): Page<Vehicle> {
-        // 1. 접근 가능한 그룹 ID 조회
-        val accessibleGroups = relationTupleRepository
-            .findAccessibleGroups(userId, companyCode, "vehicle_group", "viewer")
+        // 1. vehicle_group:all에 viewer 권한 있는지 체크 (1번의 Check 호출)
+        val hasAllAccess = authorizationService.checkPermission(
+            userId, companyCode,
+            ResourceType.VEHICLE_GROUP, "all",
+            Permission.CAN_VIEW
+        )
 
-        // 2. 직접 권한이 있는 차량 ID 조회
-        val directVehicleIds = relationTupleRepository
-            .findDirectResources(userId, companyCode, "vehicle", "viewer")
+        if (hasAllAccess) {
+            // 2-A. 전체 접근 → DB에서 바로 페이징 (ListObjects 호출 없음!)
+            return vehicleRepository.findAll(pageable)
+        } else {
+            // 2-B. 개별 권한만 → ListObjects 사용 (드문 케이스)
+            val directVehicleIds = authorizationService
+                .listAccessibleResources(userId, "can_view", ResourceType.VEHICLE)
 
-        // 3. 그룹에 속한 차량 ID 조회 (DB JOIN)
-        val groupVehicleIds = vehicleGroupMembershipRepository
-            .findVehicleIdsByGroupIds(accessibleGroups)
-
-        // 4. 합쳐서 페이징 조회
-        val allVehicleIds = (directVehicleIds + groupVehicleIds).distinct()
-
-        return vehicleRepository.findByIdIn(allVehicleIds, pageable)
+            return vehicleRepository.findByIdIn(directVehicleIds, pageable)
+        }
     }
 }
 ```
+
+### 강제 그룹화 vs 동적 그룹 조회
+
+| 방식 | 동적 그룹 조회 | 강제 그룹화 |
+|------|---------------|------------|
+| 그룹 | 여러 그룹 가능 | `all` 그룹 고정 |
+| 조회 흐름 | 그룹 조회 → 멤버 조회 → 합치기 | 그룹 권한 체크 → DB 조회 |
+| API 호출 | ListObjects 2회+ | Check 1회 |
+| 코드 복잡도 | 높음 | 낮음 |
 
 ### 동기화 (Kafka)
 
@@ -561,6 +583,177 @@ kafkaTemplate.send(
 
 ---
 
+## 강제 그룹화의 엔지니어링 이점
+
+모든 리소스를 `all` 그룹에 강제 소속시키면 여러 성능 이점이 생긴다.
+
+### 1. ListObjects 호출 회피
+
+```
+동적 그룹 방식:
+  1. ListObjects("user:alice", "viewer", "vehicle_group") → [group:a, group:b]
+  2. ListObjects("user:alice", "viewer", "vehicle") → [v1, v2]
+  3. DB: findByGroupIn([a, b]) → [v3, v4, v5...]
+  4. 합치기 + 중복 제거
+  → OpenFGA 2회 + DB 1회 + 메모리 연산
+
+강제 그룹화:
+  1. Check("user:alice", "viewer", "vehicle_group:all") → true
+  2. DB: findAll(pageable)
+  → OpenFGA 1회 + DB 1회
+```
+
+**OpenFGA 호출 50% 감소**, ListObjects의 1,000개 제한 문제도 회피한다.
+
+### 2. 예측 가능한 응답 시간
+
+```
+동적 방식: O(그룹 수) + O(직접 권한 수)
+  - 사용자마다 응답 시간이 다름
+  - 권한이 많은 사용자일수록 느림
+
+강제 그룹화: O(1) Check + O(1) DB 쿼리
+  - 모든 사용자가 동일한 응답 시간
+  - SLA 보장 용이
+```
+
+| 사용자 | 동적 방식 | 강제 그룹화 |
+|--------|----------|------------|
+| 신입 (권한 적음) | ~50ms | ~30ms |
+| 관리자 (권한 많음) | ~500ms | ~30ms |
+| 슈퍼 어드민 | ~2000ms+ | ~30ms |
+
+### 3. DB 인덱스 최대 활용
+
+```sql
+-- 동적 방식: IN 쿼리 (인덱스 효율 낮음)
+SELECT * FROM vehicles
+WHERE id IN (uuid1, uuid2, ..., uuid10000)  -- 최대 10,000개
+ORDER BY created_at DESC
+LIMIT 20;
+
+-- 강제 그룹화: 단순 쿼리 (인덱스 최적화)
+SELECT * FROM vehicles
+ORDER BY created_at DESC
+LIMIT 20 OFFSET 0;
+```
+
+IN 절에 ID가 많아지면 쿼리 플래너가 인덱스를 포기하고 풀스캔할 수 있다.
+
+### 4. 캐싱 효율성
+
+```
+동적 방식:
+  - 캐시 키: "accessible_vehicles:user:alice"
+  - 사용자마다 다른 캐시 → 캐시 히트율 낮음
+  - 권한 변경 시 관련 캐시 모두 무효화 필요
+
+강제 그룹화:
+  - 캐시 키: "has_all_access:user:alice:vehicle_group:all"
+  - Boolean 값 하나만 캐시
+  - 목록은 공통 캐시 사용 가능
+```
+
+```kotlin
+@Cacheable("vehicle_group_access")
+fun hasAllAccess(userId: UUID, companyCode: String): Boolean {
+    return authorizationService.checkPermission(
+        userId, companyCode,
+        ResourceType.VEHICLE_GROUP, "all",
+        Permission.CAN_VIEW
+    )
+}
+```
+
+### 5. 코드 복잡도 감소
+
+```kotlin
+// 동적 방식: 복잡한 합집합 로직
+fun getAccessibleVehicles(...): Page<Vehicle> {
+    val groups = listAccessibleGroups(...)
+    val directIds = listDirectResources(...)
+    val groupMemberIds = findMembersByGroups(groups)
+    val allIds = (directIds + groupMemberIds).distinct()
+
+    // 페이징 문제: distinct 후 total count가 달라짐
+    // 정렬 문제: 두 소스의 정렬 기준이 다름
+    // ...복잡한 처리 필요
+}
+
+// 강제 그룹화: 단순 분기
+fun getAccessibleVehicles(...): Page<Vehicle> {
+    return if (hasAllAccess(...)) {
+        vehicleRepository.findAll(pageable)  // 끝
+    } else {
+        vehicleRepository.findByIdIn(listDirect(...), pageable)
+    }
+}
+```
+
+### 6. 권한 변경 영향 최소화
+
+```
+시나리오: DOT42 회사에서 신규 직원 100명 입사
+
+동적 방식:
+  - 100명의 "접근 가능 목록" 캐시 워밍 필요
+  - 각각 ListObjects 호출 발생
+  - 콜드 스타트 시 응답 시간 증가
+
+강제 그룹화:
+  - company:DOT42#member@user:신규직원 튜플만 추가
+  - vehicle_group:all 권한은 이미 DOT42에 있음
+  - 추가 처리 없음
+```
+
+### 7. 모니터링 단순화
+
+```
+동적 방식 메트릭:
+  - list_objects_duration_seconds (분포가 넓음)
+  - list_objects_result_count (0~10,000)
+  - merge_operation_duration_seconds
+  - ...
+
+강제 그룹화 메트릭:
+  - check_duration_seconds (일정함)
+  - db_query_duration_seconds (일정함)
+```
+
+P99 레이턴시 관리가 훨씬 쉬워진다.
+
+### 트레이드오프
+
+강제 그룹화가 적합하지 않은 경우도 있다.
+
+| 상황 | 권장 방식 |
+|------|----------|
+| 대부분 전체 접근 | ✅ 강제 그룹화 |
+| 세밀한 그룹 분리 필요 | ❌ 동적 그룹 |
+| 그룹이 자주 변경됨 | ❌ 동적 그룹 |
+| "내 차량만 보기" 기능 | 🔀 하이브리드 |
+
+하이브리드 예시:
+
+```kotlin
+fun getVehicles(filter: VehicleFilter, pageable: Pageable): Page<Vehicle> {
+    return when (filter) {
+        VehicleFilter.ALL -> {
+            // 전체 → 강제 그룹화 방식
+            if (hasAllAccess()) vehicleRepository.findAll(pageable)
+            else throw ForbiddenException()
+        }
+        VehicleFilter.MY_VEHICLES -> {
+            // 내 차량만 → 직접 권한 조회
+            val myIds = listDirectResources(userId, "vehicle", "operator")
+            vehicleRepository.findByIdIn(myIds, pageable)
+        }
+    }
+}
+```
+
+---
+
 ## 정리
 
 Group 패턴은 **벌크 권한 관리의 핵심**이다.
@@ -570,7 +763,17 @@ Group 패턴은 **벌크 권한 관리의 핵심**이다.
 그룹 부여: O(users + groups + resources)
 ```
 
-OpenFGA의 `parent` 관계와 `from parent` 상속을 활용하면, 대규모 리소스에서도 효율적인 권한 관리가 가능하다. 단, ListObjects 한계는 Dual Source 패턴으로 보완해야 한다.
+특히 **강제 그룹화**를 적용하면:
+
+| 항목 | 효과 |
+|------|------|
+| API 호출 | ListObjects → Check 1회로 감소 |
+| 응답 시간 | 사용자 무관 O(1) |
+| 캐싱 | Boolean 캐시로 히트율 극대화 |
+| DB 쿼리 | IN 절 없이 단순 페이징 |
+| 코드 | 합집합 로직 제거 |
+
+OpenFGA의 `parent` 관계와 `from parent` 상속을 활용하되, **목록 조회는 Check + DB 페이징**으로 단순화하는 것이 실전에서 효과적이다.
 
 ---
 
