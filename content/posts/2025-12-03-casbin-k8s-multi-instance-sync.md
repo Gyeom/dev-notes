@@ -3,7 +3,7 @@ title: "Casbin K8s 멀티 인스턴스 정책 동기화 전략"
 date: 2025-12-03
 tags: ["Casbin", "Kubernetes", "Spring-Boot", "Authorization", "Redis"]
 categories: ["Architecture"]
-summary: "K8s 환경에서 여러 Pod에 배포된 Casbin 인스턴스 간 정책을 동기화하는 전략을 정리한다."
+summary: "K8s 환경에서 Casbin 인스턴스 간 정책 동기화 전략(Redis/PostgreSQL Watcher)과 대규모 리소스 목록 페이징 전략을 정리한다."
 ---
 
 ## 문제 상황
@@ -308,6 +308,110 @@ watcher.setUpdateCallback(() -> {
     auditService.record("POLICY_RELOAD", getCurrentPodName());
 });
 ```
+
+---
+
+## 페이징과 리소스 목록 조회
+
+멀티 인스턴스 동기화와 별개로, Casbin의 또 다른 고려사항이 있다. **"사용자가 접근 가능한 리소스 목록"**을 어떻게 조회할 것인가?
+
+### OpenFGA와의 차이
+
+| 측면 | OpenFGA | Casbin |
+|------|---------|--------|
+| **리소스 목록 API** | `ListObjects` (한계 있음) | ❌ 없음 |
+| **최대 결과** | 1,000개, 3초 타임아웃 | 제한 없음 (메모리) |
+| **권한 체크 방식** | API 호출 | 메모리 접근 |
+
+OpenFGA는 `ListObjects` API가 있지만 1,000개 제한과 페이지네이션 미지원 문제가 있다. Casbin은 **그런 API 자체가 없다**.
+
+```java
+// OpenFGA: 한 번에 목록 요청 (1,000개 제한)
+client.listObjects(user, "viewer", "document");
+
+// Casbin: 리소스마다 개별 체크
+for (Document doc : allDocuments) {
+    if (enforcer.enforce(user, doc.getId(), "read")) {
+        results.add(doc);
+    }
+}
+```
+
+### Casbin의 장점
+
+임베디드라서 **배치 체크가 빠르다**.
+
+```java
+// 1,000개 체크해도 수십ms (메모리 접근)
+List<Document> filtered = documents.stream()
+    .filter(doc -> enforcer.enforce("alice", doc.getId(), "read"))
+    .toList();
+```
+
+OpenFGA는 같은 작업에 네트워크 호출이 필요하다.
+
+### 대규모 페이징 전략
+
+100만 개 문서 중 접근 가능한 것만 10개씩 페이징해야 한다면?
+
+**방법 1: DB 페이징 + 권한 필터 (소규모)**
+
+```java
+public Page<Document> getMyDocuments(String userId, Pageable pageable) {
+    // 1. DB에서 페이지 조회
+    Page<Document> page = documentRepo.findAll(pageable);
+
+    // 2. 권한 필터링 (메모리에서 빠르게)
+    List<Document> filtered = page.stream()
+        .filter(doc -> enforcer.enforce(userId, doc.getId(), "read"))
+        .toList();
+
+    // 문제: 10개 요청했는데 3개만 통과하면?
+    return new PageImpl<>(filtered, pageable, page.getTotalElements());
+}
+```
+
+**방법 2: Filtered Adapter (테넌트별 정책)**
+
+```java
+// 테넌트별로 정책을 분리 로드
+Filter filter = new Filter();
+filter.setP(new String[]{"", "tenant_123"});
+adapter.loadFilteredPolicy(enforcer.getModel(), filter);
+```
+
+정책 자체를 테넌트/조직 단위로 분리하면 메모리 사용량과 검색 범위를 줄일 수 있다.
+
+**방법 3: 권한 비정규화 (대규모)**
+
+OpenFGA 포스트에서 다룬 것과 같은 전략이 필요하다.
+
+```
+┌──────────────┐                  ┌──────────────────────┐
+│   Casbin     │  Watcher 이벤트  │  Search Index / DB   │
+│  (정책 관리) │ ───────────────▶ │  + ACL 비정규화      │
+└──────────────┘                  └──────────────────────┘
+```
+
+```sql
+-- 문서 테이블에 ACL 컬럼 추가
+SELECT * FROM documents
+WHERE tenant_id = :tenantId
+  AND (owner_id = :userId OR :userId = ANY(acl_users))
+ORDER BY created_at DESC
+LIMIT 10 OFFSET 0
+```
+
+### 전략 선택 가이드
+
+| 규모 | 접근 비율 | 권장 전략 |
+|------|----------|----------|
+| 소규모 (~1K) | 높음 | DB 페이징 + `enforce()` 필터 |
+| 소규모 | 낮음 | `getImplicitPermissionsForUser()` 후 IN 쿼리 |
+| 중규모 (~100K) | - | Filtered Adapter + 테넌트 분리 |
+| 대규모 (100K+) | - | ACL 비정규화 또는 검색 인덱스 동기화 |
+
+Casbin은 **권한 체크는 빠르지만**, 대규모 리소스 목록 조회는 추가 설계가 필요하다. 이 점은 OpenFGA나 다른 인가 시스템과 동일하다.
 
 ---
 
