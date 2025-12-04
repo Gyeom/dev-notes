@@ -100,6 +100,8 @@ Index Scan on orders  (actual time=0.015..0.020 rows=5 loops=1000)
 
 PostgreSQL이 테이블에서 데이터를 읽는 방법이다.
 
+### Sequential Scan (Seq Scan)
+
 ```mermaid
 flowchart LR
     subgraph "Sequential Scan"
@@ -111,37 +113,6 @@ flowchart LR
         R4 --> RN["Row N"]
     end
 ```
-
-```mermaid
-flowchart LR
-    subgraph "Index Scan"
-        direction LR
-        I1[("Index")] -->|"조회"| I2["위치 찾기"]
-        I2 -->|"랜덤 I/O"| T1[("Heap")]
-        T1 --> R1["Row"]
-    end
-```
-
-```mermaid
-flowchart LR
-    subgraph "Bitmap Scan"
-        direction LR
-        I1[("Index")] -->|"1. 스캔"| BM["Bitmap\n(페이지 목록)"]
-        BM -->|"2. 정렬"| SO["페이지 순서\n정렬"]
-        SO -->|"3. 순차 I/O"| T1[("Heap")]
-    end
-```
-
-```mermaid
-flowchart LR
-    subgraph "Index Only Scan"
-        direction LR
-        I1[("Index\n(모든 컬럼 포함)")] -->|"조회"| R1["결과 반환"]
-        VM["Visibility Map"] -.->|"확인"| I1
-    end
-```
-
-### Sequential Scan (Seq Scan)
 
 ```
 Seq Scan on users  (cost=0.00..458.00 rows=10000 width=244)
@@ -159,6 +130,16 @@ Seq Scan on users  (cost=0.00..458.00 rows=10000 width=244)
 
 ### Index Scan
 
+```mermaid
+flowchart LR
+    subgraph "Index Scan"
+        direction LR
+        I1[("Index")] -->|"조회"| I2["위치 찾기"]
+        I2 -->|"랜덤 I/O"| T1[("Heap")]
+        T1 --> R1["Row"]
+    end
+```
+
 ```
 Index Scan using users_pkey on users  (cost=0.29..8.31 rows=1 width=244)
   Index Cond: (id = 1)
@@ -173,6 +154,16 @@ Index Scan using users_pkey on users  (cost=0.29..8.31 rows=1 width=244)
 **단점**: 랜덤 I/O가 발생한다. 많은 행을 읽으면 Seq Scan보다 느릴 수 있다.
 
 ### Bitmap Scan (Bitmap Index Scan + Bitmap Heap Scan)
+
+```mermaid
+flowchart LR
+    subgraph "Bitmap Scan"
+        direction LR
+        I1[("Index")] -->|"1. 스캔"| BM["Bitmap\n(페이지 목록)"]
+        BM -->|"2. 정렬"| SO["페이지 순서\n정렬"]
+        SO -->|"3. 순차 I/O"| T1[("Heap")]
+    end
+```
 
 ```
 Bitmap Heap Scan on orders  (cost=4.38..14.15 rows=10 width=244)
@@ -195,6 +186,15 @@ Index Scan과 Seq Scan의 중간 형태다.
 **PostgreSQL의 Bitmap Scan은 Oracle의 Bitmap Index와 다르다.** PostgreSQL은 물리적 Bitmap Index가 없고, B-tree 인덱스를 사용해 쿼리 시점에 동적으로 비트맵을 생성한다.
 
 ### Index Only Scan
+
+```mermaid
+flowchart LR
+    subgraph "Index Only Scan"
+        direction LR
+        I1[("Index\n(모든 컬럼 포함)")] -->|"조회"| R1["결과 반환"]
+        VM["Visibility Map"] -.->|"확인"| I1
+    end
+```
 
 ```
 Index Only Scan using users_email_idx on users  (cost=0.29..4.31 rows=1 width=32)
@@ -232,6 +232,8 @@ SELECT * FROM pg_visibility('users');
 
 PostgreSQL은 세 가지 조인 알고리즘을 사용한다.
 
+### Nested Loop Join
+
 ```mermaid
 flowchart TB
     subgraph "Nested Loop Join"
@@ -242,30 +244,6 @@ flowchart TB
         R1 --> L1
     end
 ```
-
-```mermaid
-flowchart LR
-    subgraph "Hash Join"
-        direction LR
-        S1["Small Table"] -->|"1. Build"| HT["Hash Table\n(메모리)"]
-        L1["Large Table"] -->|"2. Probe"| HT
-        HT --> R1["결과"]
-    end
-```
-
-```mermaid
-flowchart LR
-    subgraph "Merge Join"
-        direction LR
-        T1["Table A"] -->|"정렬"| S1["Sorted A"]
-        T2["Table B"] -->|"정렬"| S2["Sorted B"]
-        S1 --> M["Merge\n(병합)"]
-        S2 --> M
-        M --> R1["결과"]
-    end
-```
-
-### Nested Loop Join
 
 ```
 Nested Loop  (cost=0.29..16.64 rows=10 width=488)
@@ -286,6 +264,16 @@ Nested Loop  (cost=0.29..16.64 rows=10 width=488)
 **장점**: startup cost가 없다. 첫 번째 결과를 즉시 반환할 수 있다.
 
 ### Hash Join
+
+```mermaid
+flowchart LR
+    subgraph "Hash Join"
+        direction LR
+        S1["Small Table"] -->|"1. Build"| HT["Hash Table\n(메모리)"]
+        L1["Large Table"] -->|"2. Probe"| HT
+        HT --> R1["결과"]
+    end
+```
 
 ```
 Hash Join  (cost=1.23..2.45 rows=10 width=488)
@@ -310,6 +298,18 @@ Hash Join  (cost=1.23..2.45 rows=10 width=488)
 - `work_mem` 부족 시 디스크 사용
 
 ### Merge Join
+
+```mermaid
+flowchart LR
+    subgraph "Merge Join"
+        direction LR
+        T1["Table A"] -->|"정렬"| S1["Sorted A"]
+        T2["Table B"] -->|"정렬"| S2["Sorted B"]
+        S1 --> M["Merge\n(병합)"]
+        S2 --> M
+        M --> R1["결과"]
+    end
+```
 
 ```
 Merge Join  (cost=2.34..3.45 rows=10 width=488)
