@@ -100,6 +100,34 @@ Index Scan on orders  (actual time=0.015..0.020 rows=5 loops=1000)
 
 PostgreSQL이 테이블에서 데이터를 읽는 방법이다.
 
+**예시 테이블**:
+
+```sql
+-- 사용자 테이블
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    name VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 인덱스
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_status ON users(status);
+CREATE INDEX idx_users_email_name ON users(email, name);  -- 복합 인덱스
+
+-- 10만 건 데이터 삽입
+INSERT INTO users (email, name, status)
+SELECT
+    'user' || i || '@example.com',
+    'User ' || i,
+    CASE WHEN i % 10 = 0 THEN 'inactive' ELSE 'active' END
+FROM generate_series(1, 100000) i;
+
+ANALYZE users;
+```
+
 ### Sequential Scan (Seq Scan)
 
 ```mermaid
@@ -114,9 +142,19 @@ flowchart LR
     end
 ```
 
+**예시 쿼리**: 대부분의 행을 조회하거나, 인덱스가 없는 컬럼으로 필터링
+
+```sql
+-- 90%의 행이 'active'이므로 Seq Scan이 효율적
+EXPLAIN ANALYZE
+SELECT * FROM users WHERE status = 'active';
 ```
-Seq Scan on users  (cost=0.00..458.00 rows=10000 width=244)
+
+```
+Seq Scan on users  (cost=0.00..2137.00 rows=90000 width=52)
   Filter: (status = 'active')
+  Rows Removed by Filter: 10000
+  actual time=0.013..15.842 rows=90000 loops=1
 ```
 
 테이블 전체를 처음부터 끝까지 순차적으로 읽는다.
@@ -140,9 +178,22 @@ flowchart LR
     end
 ```
 
+**예시 쿼리**: PK 또는 인덱스 컬럼으로 소수의 행 조회
+
+```sql
+-- PK로 단일 행 조회
+EXPLAIN ANALYZE
+SELECT * FROM users WHERE id = 42;
+
+-- 유니크한 값으로 조회
+EXPLAIN ANALYZE
+SELECT * FROM users WHERE email = 'user500@example.com';
 ```
-Index Scan using users_pkey on users  (cost=0.29..8.31 rows=1 width=244)
-  Index Cond: (id = 1)
+
+```
+Index Scan using users_pkey on users  (cost=0.29..8.31 rows=1 width=52)
+  Index Cond: (id = 42)
+  actual time=0.019..0.020 rows=1 loops=1
 ```
 
 인덱스를 통해 조건에 맞는 행의 위치를 찾고, 해당 위치로 직접 이동해서 데이터를 읽는다.
@@ -165,11 +216,25 @@ flowchart LR
     end
 ```
 
+**예시 쿼리**: 중간 규모의 범위 조회, 또는 여러 인덱스 조건 결합
+
+```sql
+-- 10%의 행 조회 (Index Scan으로는 너무 많고, Seq Scan으로는 적음)
+EXPLAIN ANALYZE
+SELECT * FROM users WHERE status = 'inactive';
+
+-- 여러 인덱스 조건 결합 (BitmapAnd)
+EXPLAIN ANALYZE
+SELECT * FROM users
+WHERE status = 'inactive' AND email LIKE 'user1%';
 ```
-Bitmap Heap Scan on orders  (cost=4.38..14.15 rows=10 width=244)
-  Recheck Cond: (user_id = 100)
-  ->  Bitmap Index Scan on orders_user_id_idx  (cost=0.00..4.38 rows=10 width=0)
-        Index Cond: (user_id = 100)
+
+```
+Bitmap Heap Scan on users  (cost=189.00..1020.25 rows=10000 width=52)
+  Recheck Cond: (status = 'inactive')
+  ->  Bitmap Index Scan on idx_users_status  (cost=0.00..186.50 rows=10000 width=0)
+        Index Cond: (status = 'inactive')
+  actual time=1.205..5.842 rows=10000 loops=1
 ```
 
 Index Scan과 Seq Scan의 중간 형태다.
@@ -196,10 +261,23 @@ flowchart LR
     end
 ```
 
+**예시 쿼리**: SELECT 절의 모든 컬럼이 인덱스에 포함된 경우
+
+```sql
+-- 복합 인덱스에 포함된 컬럼만 조회
+EXPLAIN ANALYZE
+SELECT email, name FROM users WHERE email = 'user500@example.com';
+
+-- COUNT 쿼리 (인덱스만으로 충분)
+EXPLAIN ANALYZE
+SELECT COUNT(*) FROM users WHERE status = 'active';
 ```
-Index Only Scan using users_email_idx on users  (cost=0.29..4.31 rows=1 width=32)
-  Index Cond: (email = 'test@example.com')
+
+```
+Index Only Scan using idx_users_email_name on users  (cost=0.42..4.44 rows=1 width=32)
+  Index Cond: (email = 'user500@example.com')
   Heap Fetches: 0
+  actual time=0.025..0.026 rows=1 loops=1
 ```
 
 인덱스만으로 쿼리를 완료한다. 힙(테이블)에 접근하지 않는다.
@@ -232,6 +310,31 @@ SELECT * FROM pg_visibility('users');
 
 PostgreSQL은 세 가지 조인 알고리즘을 사용한다.
 
+**예시 테이블**:
+
+```sql
+-- 주문 테이블 (10만 건)
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    product_name VARCHAR(100),
+    amount DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+
+INSERT INTO orders (user_id, product_name, amount)
+SELECT
+    (random() * 99999 + 1)::int,
+    'Product ' || (random() * 1000)::int,
+    (random() * 1000)::decimal(10, 2)
+FROM generate_series(1, 100000);
+
+-- users 테이블은 Scan Types 섹션에서 생성한 것 사용
+ANALYZE orders;
+```
+
 ### Nested Loop Join
 
 ```mermaid
@@ -245,11 +348,31 @@ flowchart TB
     end
 ```
 
+**예시 쿼리**: 소량의 주문과 사용자 조인 (내부 테이블에 인덱스 있음)
+
+```sql
+-- 특정 사용자의 주문 조회 (외부 테이블 작음)
+EXPLAIN ANALYZE
+SELECT u.name, o.product_name, o.amount
+FROM orders o
+JOIN users u ON u.id = o.user_id
+WHERE o.user_id = 42;
+
+-- LIMIT이 있어서 Nested Loop 선호
+EXPLAIN ANALYZE
+SELECT u.name, o.product_name
+FROM orders o
+JOIN users u ON u.id = o.user_id
+LIMIT 10;
 ```
-Nested Loop  (cost=0.29..16.64 rows=10 width=488)
-  ->  Seq Scan on orders  (cost=0.00..1.10 rows=10 width=244)
-  ->  Index Scan using users_pkey on users  (cost=0.29..1.55 rows=1 width=244)
-        Index Cond: (id = orders.user_id)
+
+```
+Nested Loop  (cost=0.57..25.64 rows=5 width=128)
+  ->  Index Scan using idx_orders_user_id on orders o  (cost=0.29..12.30 rows=5 width=52)
+        Index Cond: (user_id = 42)
+  ->  Index Scan using users_pkey on users u  (cost=0.29..2.50 rows=1 width=76)
+        Index Cond: (id = o.user_id)
+  actual time=0.035..0.089 rows=5 loops=1
 ```
 
 외부 테이블의 각 행에 대해 내부 테이블을 스캔한다.
@@ -275,12 +398,31 @@ flowchart LR
     end
 ```
 
+**예시 쿼리**: 두 테이블 모두 대량 조회
+
+```sql
+-- 모든 주문과 사용자 조인 (대량 데이터)
+EXPLAIN ANALYZE
+SELECT u.name, o.product_name, o.amount
+FROM orders o
+JOIN users u ON u.id = o.user_id;
+
+-- 집계와 함께 사용 (전체 스캔 필요)
+EXPLAIN ANALYZE
+SELECT u.name, COUNT(*) as order_count, SUM(o.amount) as total
+FROM orders o
+JOIN users u ON u.id = o.user_id
+GROUP BY u.id, u.name;
 ```
-Hash Join  (cost=1.23..2.45 rows=10 width=488)
-  Hash Cond: (orders.user_id = users.id)
-  ->  Seq Scan on orders  (cost=0.00..1.10 rows=10 width=244)
-  ->  Hash  (cost=1.10..1.10 rows=10 width=244)
-        ->  Seq Scan on users  (cost=0.00..1.10 rows=10 width=244)
+
+```
+Hash Join  (cost=3084.00..5765.00 rows=100000 width=128)
+  Hash Cond: (o.user_id = u.id)
+  ->  Seq Scan on orders o  (cost=0.00..1834.00 rows=100000 width=52)
+  ->  Hash  (cost=1834.00..1834.00 rows=100000 width=76)
+        Buckets: 131072  Batches: 1  Memory Usage: 8945kB
+        ->  Seq Scan on users u  (cost=0.00..1834.00 rows=100000 width=76)
+  actual time=45.123..156.789 rows=100000 loops=1
 ```
 
 작은 테이블로 해시 테이블을 만들고, 큰 테이블을 스캔하며 해시 조회한다.
@@ -311,15 +453,31 @@ flowchart LR
     end
 ```
 
+**예시 쿼리**: 이미 정렬되어 있거나 정렬이 필요한 경우
+
+```sql
+-- ORDER BY가 조인 키와 일치 (정렬 재사용)
+EXPLAIN ANALYZE
+SELECT u.id, u.name, o.product_name
+FROM users u
+JOIN orders o ON o.user_id = u.id
+ORDER BY u.id;
+
+-- Hash Join이 메모리 부족할 때 대안
+SET work_mem = '64kB';  -- 강제로 Merge Join 유도
+EXPLAIN ANALYZE
+SELECT u.name, o.product_name
+FROM orders o
+JOIN users u ON u.id = o.user_id;
+RESET work_mem;
 ```
-Merge Join  (cost=2.34..3.45 rows=10 width=488)
-  Merge Cond: (orders.user_id = users.id)
-  ->  Sort  (cost=1.17..1.17 rows=10 width=244)
-        Sort Key: orders.user_id
-        ->  Seq Scan on orders  (cost=0.00..1.10 rows=10 width=244)
-  ->  Sort  (cost=1.17..1.17 rows=10 width=244)
-        Sort Key: users.id
-        ->  Seq Scan on users  (cost=0.00..1.10 rows=10 width=244)
+
+```
+Merge Join  (cost=0.71..15234.71 rows=100000 width=128)
+  Merge Cond: (u.id = o.user_id)
+  ->  Index Scan using users_pkey on users u  (cost=0.29..4234.29 rows=100000 width=76)
+  ->  Index Scan using idx_orders_user_id on orders o  (cost=0.29..8500.29 rows=100000 width=52)
+  actual time=0.045..234.567 rows=100000 loops=1
 ```
 
 두 테이블을 조인 키로 정렬한 후 병합한다.
@@ -335,21 +493,57 @@ Merge Join  (cost=2.34..3.45 rows=10 width=488)
 
 `EXISTS`, `IN`, `NOT EXISTS`, `NOT IN` 서브쿼리에 사용된다.
 
+**예시 쿼리**: 주문이 있는 사용자만 조회
+
+```sql
+-- Semi Join: EXISTS 사용
+EXPLAIN ANALYZE
+SELECT u.id, u.name
+FROM users u
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id);
+
+-- Semi Join: IN 사용 (같은 실행 계획)
+EXPLAIN ANALYZE
+SELECT u.id, u.name
+FROM users u
+WHERE u.id IN (SELECT user_id FROM orders);
 ```
-Hash Semi Join  (cost=1.23..2.45 rows=5 width=244)
-  Hash Cond: (orders.user_id = active_users.id)
-  ->  Seq Scan on orders
-  ->  Hash
-        ->  Seq Scan on active_users
+
+```
+Hash Semi Join  (cost=2693.00..4527.00 rows=63212 width=80)
+  Hash Cond: (u.id = o.user_id)
+  ->  Seq Scan on users u  (cost=0.00..1834.00 rows=100000 width=80)
+  ->  Hash  (cost=1834.00..1834.00 rows=100000 width=4)
+        ->  Seq Scan on orders o  (cost=0.00..1834.00 rows=100000 width=4)
+  actual time=25.123..89.456 rows=63212 loops=1
 ```
 
 **Semi Join**: 매칭되는 첫 번째 행만 찾으면 중단 (EXISTS)
 **Anti Join**: 매칭되는 행이 없을 때만 반환 (NOT EXISTS)
 
+**예시 쿼리**: 주문이 없는 사용자 조회
+
+```sql
+-- Anti Join: NOT EXISTS 사용 (권장)
+EXPLAIN ANALYZE
+SELECT u.id, u.name
+FROM users u
+WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id);
+```
+
+```
+Hash Anti Join  (cost=2693.00..4527.00 rows=36788 width=80)
+  Hash Cond: (u.id = o.user_id)
+  ->  Seq Scan on users u  (cost=0.00..1834.00 rows=100000 width=80)
+  ->  Hash  (cost=1834.00..1834.00 rows=100000 width=4)
+        ->  Seq Scan on orders o  (cost=0.00..1834.00 rows=100000 width=4)
+  actual time=25.123..95.678 rows=36788 loops=1
+```
+
 **중요**: `NOT IN`은 NULL 처리 문제로 비효율적일 수 있다. **항상 `NOT EXISTS`를 사용하라.**
 
 ```sql
--- 비권장: NOT IN
+-- 비권장: NOT IN (NULL이 있으면 전체 결과가 빈 집합)
 SELECT * FROM orders WHERE user_id NOT IN (SELECT id FROM banned_users);
 
 -- 권장: NOT EXISTS
