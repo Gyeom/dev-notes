@@ -35,6 +35,20 @@ ROLLBACK;
 Seq Scan on users  (cost=0.00..458.00 rows=10000 width=244) (actual time=0.009..2.198 rows=10000 loops=1)
 ```
 
+실행 계획은 트리 구조다. 데이터는 **아래에서 위로** 흐른다.
+
+```mermaid
+flowchart BT
+    subgraph "실행 계획 트리"
+        direction BT
+        S1["Seq Scan on orders"] --> NL["Nested Loop"]
+        IS["Index Scan on users"] --> NL
+        NL --> SO["Sort"]
+        SO --> LIM["Limit"]
+        LIM --> R["결과 반환"]
+    end
+```
+
 ### cost (예상 비용)
 
 `cost=0.00..458.00`에서:
@@ -85,6 +99,47 @@ Index Scan on orders  (actual time=0.015..0.020 rows=5 loops=1000)
 ## Scan Types (스캔 방식)
 
 PostgreSQL이 테이블에서 데이터를 읽는 방법이다.
+
+```mermaid
+flowchart LR
+    subgraph "Sequential Scan"
+        direction LR
+        T1[("Table")] --> R1["Row 1"]
+        R1 --> R2["Row 2"]
+        R2 --> R3["Row 3"]
+        R3 --> R4["..."]
+        R4 --> RN["Row N"]
+    end
+```
+
+```mermaid
+flowchart LR
+    subgraph "Index Scan"
+        direction LR
+        I1[("Index")] -->|"조회"| I2["위치 찾기"]
+        I2 -->|"랜덤 I/O"| T1[("Heap")]
+        T1 --> R1["Row"]
+    end
+```
+
+```mermaid
+flowchart LR
+    subgraph "Bitmap Scan"
+        direction LR
+        I1[("Index")] -->|"1. 스캔"| BM["Bitmap\n(페이지 목록)"]
+        BM -->|"2. 정렬"| SO["페이지 순서\n정렬"]
+        SO -->|"3. 순차 I/O"| T1[("Heap")]
+    end
+```
+
+```mermaid
+flowchart LR
+    subgraph "Index Only Scan"
+        direction LR
+        I1[("Index\n(모든 컬럼 포함)")] -->|"조회"| R1["결과 반환"]
+        VM["Visibility Map"] -.->|"확인"| I1
+    end
+```
 
 ### Sequential Scan (Seq Scan)
 
@@ -176,6 +231,39 @@ SELECT * FROM pg_visibility('users');
 ## Join Algorithms (조인 알고리즘)
 
 PostgreSQL은 세 가지 조인 알고리즘을 사용한다.
+
+```mermaid
+flowchart TB
+    subgraph "Nested Loop Join"
+        direction TB
+        O1["Outer Table"] --> L1{"각 행마다"}
+        L1 --> I1["Inner Table\n(Index Scan)"]
+        I1 --> R1["결과"]
+        R1 --> L1
+    end
+```
+
+```mermaid
+flowchart LR
+    subgraph "Hash Join"
+        direction LR
+        S1["Small Table"] -->|"1. Build"| HT["Hash Table\n(메모리)"]
+        L1["Large Table"] -->|"2. Probe"| HT
+        HT --> R1["결과"]
+    end
+```
+
+```mermaid
+flowchart LR
+    subgraph "Merge Join"
+        direction LR
+        T1["Table A"] -->|"정렬"| S1["Sorted A"]
+        T2["Table B"] -->|"정렬"| S2["Sorted B"]
+        S1 --> M["Merge\n(병합)"]
+        S2 --> M
+        M --> R1["결과"]
+    end
+```
 
 ### Nested Loop Join
 
@@ -282,6 +370,30 @@ WHERE NOT EXISTS (SELECT 1 FROM banned_users b WHERE b.id = o.user_id);
 ## Buffer 통계
 
 `EXPLAIN (ANALYZE, BUFFERS)`로 I/O 패턴을 분석한다.
+
+```mermaid
+flowchart LR
+    subgraph "PostgreSQL Buffer 구조"
+        direction LR
+        Q["Query"] --> SB["shared_buffers\n(PostgreSQL 캐시)"]
+        SB -->|"hit"| R["결과"]
+        SB -->|"miss"| OS["OS Page Cache"]
+        OS -->|"hit"| SB
+        OS -->|"miss"| D[("Disk")]
+        D --> OS
+    end
+```
+
+```mermaid
+flowchart TB
+    subgraph "Buffer 상태"
+        direction TB
+        HIT["shared hit\n✅ 캐시 히트\n(가장 빠름)"]
+        READ["shared read\n⚠️ 디스크/OS캐시\n(느림)"]
+        DIRTY["shared dirtied\n🔄 페이지 수정됨"]
+        WRITTEN["shared written\n💾 디스크에 기록"]
+    end
+```
 
 ```
 Seq Scan on large_table  (cost=0.00..18334.00 rows=1000000 width=37)
@@ -464,6 +576,18 @@ SET effective_cache_size = '4GB';
 ---
 
 ## 병렬 쿼리
+
+```mermaid
+flowchart TB
+    subgraph "병렬 쿼리 구조"
+        direction TB
+        L["Leader Process"] --> G["Gather"]
+        W1["Worker 1\nParallel Seq Scan"] --> G
+        W2["Worker 2\nParallel Seq Scan"] --> G
+        W3["Worker 3\nParallel Seq Scan"] --> G
+        G --> R["결과"]
+    end
+```
 
 ```
 Gather  (cost=1000.00..9876.54 rows=100000 width=244)
