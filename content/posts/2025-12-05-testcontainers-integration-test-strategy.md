@@ -647,18 +647,17 @@ class ActivateVehicleUseCaseTest : BehaviorSpec({
 
 Mike Cohn의 "Succeeding with Agile"에서 제안한 모델이다.
 
-```
-        /\
-       /  \     E2E
-      /    \    느림, 적게
-     /------\
-    /        \
-   /   통합   \  중간
-  /   테스트   \
- /-------------\
-/               \
-/    단위 테스트   \ 빠름, 많이
-/___________________\
+```mermaid
+flowchart TB
+    E2E["🔺 E2E<br/><small>느림, 적게</small>"]
+    Integration["🔸 통합 테스트<br/><small>중간</small>"]
+    Unit["🟩 단위 테스트<br/><small>빠름, 많이</small>"]
+
+    E2E --- Integration --- Unit
+
+    style E2E fill:#ffcccc,stroke:#cc0000
+    style Integration fill:#fff3cd,stroke:#cc9900
+    style Unit fill:#d4edda,stroke:#28a745
 ```
 
 **원칙**: 단위 테스트를 가장 많이, E2E를 가장 적게.
@@ -667,18 +666,16 @@ Mike Cohn의 "Succeeding with Agile"에서 제안한 모델이다.
 
 [Kent C. Dodds](https://kentcdodds.com/blog/write-tests)가 제안한 모델이다.
 
-```
-       ___
-      /   \     E2E
-     |     |
-    /       \
-   |  통합   |   ← 가장 많이
-   |  테스트  |
-    \       /
-     |     |
-      \___/     단위 테스트
-       | |
-      Static    (타입 체크, 린터)
+```mermaid
+flowchart TB
+    E2E2["E2E"]
+    Integration2["🏆 통합 테스트<br/><small>← 가장 많이</small>"]
+    Unit2["단위 테스트"]
+    Static["Static<br/><small>타입 체크, 린터</small>"]
+
+    E2E2 --- Integration2 --- Unit2 --- Static
+
+    style Integration2 fill:#ffd700,stroke:#cc9900,stroke-width:3px
 ```
 
 유명한 격언이 있다.
@@ -712,18 +709,17 @@ Mike Cohn의 "Succeeding with Agile"에서 제안한 모델이다.
 
 ## 테스트 레벨별 구성
 
-```
-        /\
-       /  \     E2E (전체 앱)
-      /    \    - 모든 컨테이너
-     /------\   - 느리지만 확실
-    /        \
-   /   통합   \  서비스 통합
-  /   테스트   \ - 필요한 컨테이너만
- /-------------\ - 중간 속도
-/               \
-/    단위 테스트   \ 도메인 로직
-/___________________\ - 빠른 피드백
+```mermaid
+flowchart TB
+    E2E3["🔺 E2E<br/><small>전체 앱, 모든 컨테이너</small>"]
+    Integration3["🔸 통합 테스트<br/><small>필요한 컨테이너만</small>"]
+    Unit3["🟩 단위 테스트<br/><small>도메인 로직, 빠른 피드백</small>"]
+
+    E2E3 --- Integration3 --- Unit3
+
+    style E2E3 fill:#ffcccc,stroke:#cc0000
+    style Integration3 fill:#fff3cd,stroke:#cc9900
+    style Unit3 fill:#d4edda,stroke:#28a745
 ```
 
 | 레벨 | Import 범위 | 사용 컨테이너 | 상대 시간 |
