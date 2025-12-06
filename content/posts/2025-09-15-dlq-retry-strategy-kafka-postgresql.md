@@ -1,6 +1,6 @@
 ---
 title: "DLQ 재처리 전략: Kafka DLT, PostgreSQL DLQ, 그리고 하이브리드"
-date: 2024-11-10
+date: 2025-09-15
 draft: false
 tags: ["Kafka", "PostgreSQL", "DLQ", "DLT", "Spring Boot", "에러핸들링", "분산시스템"]
 categories: ["Backend"]

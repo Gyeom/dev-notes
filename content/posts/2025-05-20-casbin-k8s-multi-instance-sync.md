@@ -1,6 +1,6 @@
 ---
 title: "Casbin K8s 멀티 인스턴스 정책 동기화 전략"
-date: 2024-10-25
+date: 2025-05-20
 tags: ["Casbin", "Kubernetes", "Spring-Boot", "Authorization", "Redis"]
 categories: ["Architecture"]
 summary: "K8s 환경에서 Casbin 인스턴스 간 정책 동기화 전략(Redis/PostgreSQL Watcher)과 대규모 리소스 목록 페이징 전략을 정리한다."

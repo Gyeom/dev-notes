@@ -1,6 +1,6 @@
 ---
 title: "ReBAC Group 패턴 실전 적용기: OpenFGA + Spring Boot"
-date: 2024-10-05
+date: 2025-02-10
 tags: ["OpenFGA", "ReBAC", "Authorization", "Spring-Boot", "Kotlin"]
 categories: ["Architecture"]
 summary: "OpenFGA 기반 ReBAC에서 Group 패턴을 적용해 대규모 리소스 권한 관리를 효율화한 실제 사례를 분석한다. Dual Source 패턴으로 ListObjects 한계도 극복했다."
