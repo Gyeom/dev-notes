@@ -422,6 +422,24 @@ fun createIssue(
 6. Create 클릭 → Jira 티켓 생성 완료
 ```
 
+### Tool Window
+
+![Jira Ticket Creator Tool Window](/dev-notes/images/posts/jira-automation-main.png)
+
+오른쪽 Tool Window에서 내 티켓 목록을 확인하고, "Create from Code Changes" 버튼으로 새 티켓을 생성할 수 있다.
+
+### Settings
+
+![Settings](/dev-notes/images/posts/jira-automation-settings.png)
+
+Jira 연결 정보와 AI 프로바이더(OpenAI/Anthropic)를 설정한다. 출력 언어도 선택 가능하다.
+
+### 티켓 생성 다이얼로그
+
+![Create Jira Ticket](/dev-notes/images/posts/jira-automation-create.png)
+
+AI가 생성한 제목과 설명을 확인하고 수정할 수 있다. "Regenerate" 버튼으로 다시 생성하거나, 직접 편집 후 생성한다.
+
 ### 생성 예시
 
 코드 변경:

@@ -145,7 +145,7 @@ hideFooter: true
     <div class="intro">
       대규모 데이터 파이프라인 설계와 안정적인 시스템 운영에 강점을 가진 백엔드 개발자.<br>
       50만대 장비의 실시간 데이터를 처리하는 시스템을 설계하고,<br>
-      데이터 수집 성공률을 98%에서 100%로 개선한 경험이 있습니다.
+      메시지 유실 문제를 해결하여 데이터 정합성 100%를 달성한 경험이 있습니다.
     </div>
     <div class="contact-row">
       <span>📧 koreatech93@naver.com</span>
@@ -185,6 +185,8 @@ hideFooter: true
   <span>GitLab CI, ArgoCD, Jenkins</span>
   <span class="label">Test</span>
   <span>Kotest, JUnit5, Testcontainers</span>
+  <span class="label">AI/LLM</span>
+  <span>OpenAI API, Claude API, Prompt Engineering</span>
 </div>
 {{< /rawhtml >}}
 
@@ -357,6 +359,15 @@ hideFooter: true
 ## Activity {.section-title}
 
 {{< rawhtml >}}
+<div class="activity-item">
+  <div class="activity-title">🤖 Jira Automation Plugin</div>
+  <div class="activity-meta">IntelliJ Plugin · 2025.11 ~</div>
+  <div class="activity-desc">
+    Git Diff를 분석해 LLM(OpenAI/Claude)으로 Jira 티켓을 자동 생성하는 플러그인<br>
+    → <a href="/dev-notes/posts/2024-10-29-intellij-plugin-jira-automation-llm/">개발기</a>
+  </div>
+</div>
+
 <div class="activity-item">
   <div class="activity-title">🔧 OpenFeign QueryDSL 오픈소스 기여</div>
   <div class="activity-meta">2025.05</div>
