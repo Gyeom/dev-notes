@@ -1,6 +1,6 @@
 ---
 title: "Rate Limiting 완벽 가이드: 알고리즘부터 분산 환경 구현까지"
-date: 2024-12-01
+date: 2024-08-20
 draft: false
 tags: ["Rate-Limiting", "Redis", "분산시스템", "API", "Spring", "Bucket4j", "시스템설계"]
 categories: ["백엔드"]

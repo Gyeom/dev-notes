@@ -1,6 +1,6 @@
 ---
 title: "PostgreSQL EXPLAIN ANALYZE 완벽 가이드: 실행 계획 읽는 법"
-date: 2025-12-04
+date: 2024-11-05
 draft: false
 tags: ["PostgreSQL", "Query Optimization", "Performance", "Database", "EXPLAIN"]
 summary: "PostgreSQL 쿼리 분석의 핵심인 EXPLAIN ANALYZE 출력을 완벽히 이해한다. Scan 타입, Join 알고리즘, Buffer 통계, 비용 계산, 통계 시스템까지 실행 계획의 모든 것을 다룬다."

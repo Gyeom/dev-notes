@@ -1,6 +1,6 @@
 ---
 title: "Selectively Opinionated Spring Boot (3) - Mock 남용 없는 통합 테스트"
-date: 2024-11-30
+date: 2024-03-22
 draft: false
 tags: ["Spring", "Spring Boot", "Testing", "TestContainers", "Integration Test", "Kotest"]
 categories: ["Spring"]

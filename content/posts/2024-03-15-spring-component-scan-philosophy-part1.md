@@ -1,6 +1,6 @@
 ---
 title: "Selectively Opinionated Spring Boot (1) - @ComponentScan의 함정"
-date: 2024-11-30
+date: 2024-03-15
 draft: false
 tags: ["Spring", "Spring Boot", "Hexagonal Architecture", "Component Scan", "아키텍처"]
 categories: ["Spring"]

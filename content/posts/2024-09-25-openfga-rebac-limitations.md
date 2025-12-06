@@ -1,6 +1,6 @@
 ---
 title: "OpenFGA ReBAC 구현의 한계점 심층 분석"
-date: 2025-12-02
+date: 2024-09-25
 draft: false
 tags: ["OpenFGA", "ReBAC", "Authorization", "Zanzibar"]
 summary: "OpenFGA ReBAC 구현의 페이징, 검색 통합, 성능, 일관성 문제와 대규모 데이터셋을 위한 Materialize 패턴, CQRS 아키텍처 등 해결 전략을 정리한다."

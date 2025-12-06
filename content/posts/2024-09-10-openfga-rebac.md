@@ -1,6 +1,6 @@
 ---
 title: "OpenFGA와 ReBAC로 구현하는 관계 기반 권한 제어"
-date: 2025-11-29
+date: 2024-09-10
 draft: false
 tags: ["OpenFGA", "ReBAC", "권한관리", "RBAC", "Spring Boot", "보안"]
 categories: ["백엔드"]

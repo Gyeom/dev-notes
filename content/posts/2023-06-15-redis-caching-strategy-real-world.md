@@ -1,6 +1,6 @@
 ---
 title: "Redis 캐싱 전략: 실무에서 마주치는 문제와 해결법"
-date: 2025-12-05
+date: 2023-06-15
 draft: false
 tags: ["Redis", "Cache", "Spring Boot", "성능최적화"]
 categories: ["Backend"]

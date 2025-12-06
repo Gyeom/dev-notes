@@ -1,6 +1,6 @@
 ---
 title: "Testcontainers 기반 통합 테스트 전략"
-date: 2025-12-05
+date: 2024-08-10
 draft: false
 tags: ["Spring Boot", "Testing", "Testcontainers", "Integration Test", "Kotest", "Hexagonal Architecture"]
 categories: ["Spring"]

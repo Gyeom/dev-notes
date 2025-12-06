@@ -1,6 +1,6 @@
 ---
 title: "Selectively Opinionated Spring Boot (2) - 멀티앱, 하나의 코드베이스"
-date: 2024-11-30
+date: 2024-03-18
 draft: false
 tags: ["Spring", "Spring Boot", "Multi-Module", "Configuration", "profiles.include"]
 categories: ["Spring"]

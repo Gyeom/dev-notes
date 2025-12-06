@@ -1,6 +1,6 @@
 ---
 title: "Transactional Outbox 패턴으로 메시지 발행 신뢰성 확보하기"
-date: 2024-12-01
+date: 2024-07-15
 draft: false
 tags: ["Outbox", "Kafka", "Spring", "분산시스템", "CDC"]
 categories: ["백엔드"]

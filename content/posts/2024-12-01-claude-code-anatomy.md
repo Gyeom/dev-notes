@@ -1,6 +1,6 @@
 ---
 title: "Claude Code 해부: AI 에이전트는 어떻게 작동하는가"
-date: 2025-11-29
+date: 2024-12-01
 draft: false
 tags: ["Claude Code", "AI", "에이전트", "아키텍처", "MCP"]
 categories: ["기술 분석"]
