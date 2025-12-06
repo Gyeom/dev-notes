@@ -38,46 +38,33 @@ user:bob#viewer@vehicle:v1
 
 ## 아키텍처 개요
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      fleet-server                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │  Vehicle    │  │   Policy    │  │  VehicleGroup       │  │
-│  │  Service    │  │   Service   │  │  PolicyGroup        │  │
-│  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘  │
-│         │                │                     │             │
-│         └────────────────┼─────────────────────┘             │
-│                          ▼                                   │
-│              ┌───────────────────────┐                       │
-│              │  AuthorizationService │                       │
-│              │  (Feign Client)       │                       │
-│              └───────────┬───────────┘                       │
-└──────────────────────────│───────────────────────────────────┘
-                           │ REST API
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  authorization-server                        │
-│  ┌─────────────────┐  ┌─────────────────┐                   │
-│  │ Check API       │  │ Tuple API       │                   │
-│  │ (권한 검증)      │  │ (권한 부여/회수) │                   │
-│  └────────┬────────┘  └────────┬────────┘                   │
-│           │                    │                             │
-│           ▼                    ▼                             │
-│  ┌─────────────────────────────────────────┐                │
-│  │              OpenFGA                     │                │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  │                │
-│  │  │ Check   │  │ Write   │  │ Read    │  │                │
-│  │  └─────────┘  └─────────┘  └─────────┘  │                │
-│  └─────────────────────────────────────────┘                │
-└─────────────────────────────────────────────────────────────┘
-                           │
-                     Kafka Events
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Event Sync                                │
-│  vehicle.events, policy.events, company.events               │
-│  → OpenFGA 튜플 자동 생성/삭제                                │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph FleetServer ["fleet-server"]
+        VS[Vehicle Service] --> Auth[AuthorizationService<br/>Feign Client]
+        PS[Policy Service] --> Auth
+        VG[VehicleGroup<br/>PolicyGroup] --> Auth
+    end
+
+    Auth -->|REST API| AuthServer
+
+    subgraph AuthServer ["authorization-server"]
+        Check[Check API<br/>권한 검증]
+        Tuple[Tuple API<br/>권한 부여/회수]
+        Check --> OpenFGA
+        Tuple --> OpenFGA
+        OpenFGA[(OpenFGA<br/>Check / Write / Read)]
+    end
+
+    AuthServer -->|Kafka Events| Sync
+
+    subgraph Sync ["Event Sync"]
+        Consumer[vehicle.events<br/>policy.events<br/>company.events<br/>→ 튜플 자동 생성/삭제]
+    end
+
+    style FleetServer fill:#e3f2fd
+    style AuthServer fill:#fff3e0
+    style Sync fill:#e8f5e9
 ```
 
 ---
@@ -158,30 +145,22 @@ vehicle:v1#parent@vehicle_group:all
 
 ## 권한 상속 흐름
 
+```mermaid
+flowchart TB
+    Alice[user:alice] -->|member| Tesla[company:Tesla]
+    Tesla -->|viewer| VG[vehicle_group:all]
+    VG -->|parent| V1[vehicle:v1]
+
+    Check["Check: user:alice#can_view@vehicle:v1<br/>Result: ✅ ALLOWED"]
+
+    style Alice fill:#e3f2fd
+    style Tesla fill:#bbdefb
+    style VG fill:#fff3e0
+    style V1 fill:#c8e6c9
+    style Check fill:#f5f5f5,stroke:#4caf50,stroke-width:2px
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    권한 상속 체인                             │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  user:alice ──member──▶ company:Tesla                       │
-│                              │                              │
-│                           viewer                            │
-│                              ▼                              │
-│                      vehicle_group:all                      │
-│                              │                              │
-│                           parent                            │
-│                              ▼                              │
-│                         vehicle:v1                          │
-│                                                             │
-│  Check: user:alice#can_view@vehicle:v1                      │
-│  Result: ✅ ALLOWED                                         │
-│                                                             │
-│  상속 경로:                                                  │
-│  alice → Tesla#member → Tesla#viewer@vehicle_group:all      │
-│        → viewer from parent → vehicle:v1#can_view           │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+
+**상속 경로**: alice → Tesla#member → Tesla#viewer@vehicle_group:all → viewer from parent → vehicle:v1#can_view
 
 ---
 
@@ -335,26 +314,20 @@ OpenFGA의 `ListObjects`는 대규모에서 한계가 있다.
 
 **해결책**: 권한 인덱스를 별도 DB에 유지한다.
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                   Dual Source Pattern                     │
-├──────────────────────────────────────────────────────────┤
-│                                                          │
-│   ┌─────────────┐         ┌─────────────┐               │
-│   │  OpenFGA    │         │  fleet DB    │               │
-│   │  (Check)    │         │  (List)     │               │
-│   └──────┬──────┘         └──────┬──────┘               │
-│          │                       │                       │
-│          │                       │                       │
-│   권한 검증 요청           목록 조회 요청                  │
-│   "alice가 v1을             "alice가 접근 가능한          │
-│    조회할 수 있나?"          차량 목록 (페이징)"           │
-│          │                       │                       │
-│          ▼                       ▼                       │
-│   OpenFGA Check API       tbl_relation_tuples           │
-│   (정확한 상속 계산)        (SQL 페이징/정렬)              │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Check ["권한 검증"]
+        Q1["alice가 v1을<br/>조회할 수 있나?"]
+        Q1 --> OpenFGA["OpenFGA<br/>Check API<br/>(정확한 상속 계산)"]
+    end
+
+    subgraph List ["목록 조회"]
+        Q2["alice가 접근 가능한<br/>차량 목록 (페이징)"]
+        Q2 --> DB["fleet DB<br/>tbl_relation_tuples<br/>(SQL 페이징/정렬)"]
+    end
+
+    style Check fill:#e3f2fd
+    style List fill:#e8f5e9
 ```
 
 ### DB 스키마
