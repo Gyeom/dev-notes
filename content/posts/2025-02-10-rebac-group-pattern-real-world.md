@@ -8,13 +8,13 @@ summary: "OpenFGA 기반 ReBAC에서 Group 패턴을 적용해 대규모 리소�
 
 ## 배경
 
-차량 관제 시스템에서 권한 관리가 복잡해졌다.
+Fleet Management System에서 권한 관리가 복잡해졌다.
 
 ```
 문제 상황:
 - 차량 10,000대, 정책 5,000개
 - 사용자 500명, 회사 4개
-- "DOT42 회사 전체에 모든 차량 조회 권한" 같은 요구사항
+- "Tesla 회사 전체에 모든 차량 조회 권한" 같은 요구사항
 ```
 
 개별 리소스마다 권한을 부여하면 튜플이 폭발한다.
@@ -40,7 +40,7 @@ user:bob#viewer@vehicle:v1
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      ccds-server                             │
+│                      fleet-server                            │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
 │  │  Vehicle    │  │   Policy    │  │  VehicleGroup       │  │
 │  │  Service    │  │   Service   │  │  PolicyGroup        │  │
@@ -97,8 +97,8 @@ type company
 회사 멤버십을 `company#member` 관계로 표현한다.
 
 ```
-company:DOT42#member@user:alice
-company:DOT42#member@user:bob
+company:Tesla#member@user:alice
+company:Tesla#member@user:bob
 ```
 
 ### Group Types (벌크 권한)
@@ -120,11 +120,11 @@ type vehicle_group
 **핵심**: `company#member`를 직접 할당할 수 있다.
 
 ```
-# DOT42 회사 전체에 모든 차량 조회 권한
-vehicle_group:all#viewer@company:DOT42
+# Tesla 회사 전체에 모든 차량 조회 권한
+vehicle_group:all#viewer@company:Tesla
 ```
 
-이 한 줄로 DOT42의 모든 멤버가 `vehicle_group:all`의 viewer가 된다.
+이 한 줄로 Tesla의 모든 멤버가 `vehicle_group:all`의 viewer가 된다.
 
 ### Resource Types (개별 리소스)
 
@@ -163,7 +163,7 @@ vehicle:v1#parent@vehicle_group:all
 │                    권한 상속 체인                             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  user:alice ──member──▶ company:DOT42                       │
+│  user:alice ──member──▶ company:Tesla                       │
 │                              │                              │
 │                           viewer                            │
 │                              ▼                              │
@@ -177,7 +177,7 @@ vehicle:v1#parent@vehicle_group:all
 │  Result: ✅ ALLOWED                                         │
 │                                                             │
 │  상속 경로:                                                  │
-│  alice → DOT42#member → DOT42#viewer@vehicle_group:all      │
+│  alice → Tesla#member → Tesla#viewer@vehicle_group:all      │
 │        → viewer from parent → vehicle:v1#can_view           │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
@@ -202,13 +202,13 @@ user:bob#viewer@vehicle:v1
 
 ```
 # 회사 멤버십: 500 튜플
-company:DOT42#member@user:alice
-company:DOT42#member@user:bob
+company:Tesla#member@user:alice
+company:Tesla#member@user:bob
 ...
 
 # 그룹 권한: 4 튜플 (회사 4개)
-vehicle_group:all#viewer@company:DOT42
-vehicle_group:all#viewer@company:HMG
+vehicle_group:all#viewer@company:Tesla
+vehicle_group:all#viewer@company:Rivian
 ...
 
 # 리소스-그룹 연결: 10,000 튜플
@@ -341,7 +341,7 @@ OpenFGA의 `ListObjects`는 대규모에서 한계가 있다.
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │   ┌─────────────┐         ┌─────────────┐               │
-│   │  OpenFGA    │         │  ccds DB    │               │
+│   │  OpenFGA    │         │  fleet DB    │               │
 │   │  (Check)    │         │  (List)     │               │
 │   └──────┬──────┘         └──────┬──────┘               │
 │          │                       │                       │
@@ -473,7 +473,7 @@ Content-Type: application/json
 
 {
   "subjectType": "COMPANY",
-  "subjectId": "DOT42",
+  "subjectId": "Tesla",
   "relation": "viewer"
 }
 ```
@@ -514,7 +514,7 @@ Response:
     { "relation": "operator", "resourceType": "vehicle", "resourceId": "v1-uuid" }
   ],
   "inherited": [
-    { "relation": "viewer", "resourceType": "vehicle_group", "resourceId": "all", "via": "company:DOT42" }
+    { "relation": "viewer", "resourceType": "vehicle_group", "resourceId": "all", "via": "company:Tesla" }
   ]
 }
 ```
@@ -543,7 +543,7 @@ Response:
 **신규 직원 입사**
 ```
 1. 사용자 생성 + 회사 멤버십 설정
-2. company:DOT42#member@user:신규직원
+2. company:Tesla#member@user:신규직원
 3. 회사의 모든 그룹 권한이 자동으로 적용됨
 ```
 
@@ -693,7 +693,7 @@ fun getAccessibleVehicles(...): Page<Vehicle> {
 ### 6. 권한 변경 영향 최소화
 
 ```
-시나리오: DOT42 회사에서 신규 직원 100명 입사
+시나리오: Tesla 회사에서 신규 직원 100명 입사
 
 동적 방식:
   - 100명의 "접근 가능 목록" 캐시 워밍 필요
@@ -701,8 +701,8 @@ fun getAccessibleVehicles(...): Page<Vehicle> {
   - 콜드 스타트 시 응답 시간 증가
 
 강제 그룹화:
-  - company:DOT42#member@user:신규직원 튜플만 추가
-  - vehicle_group:all 권한은 이미 DOT42에 있음
+  - company:Tesla#member@user:신규직원 튜플만 추가
+  - vehicle_group:all 권한은 이미 Tesla에 있음
   - 추가 처리 없음
 ```
 
