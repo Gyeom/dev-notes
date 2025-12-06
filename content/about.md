@@ -5,6 +5,7 @@ url: "/about/"
 summary: "김대겸 | Backend Engineer"
 hideMeta: true
 hideFooter: true
+draft: true
 ---
 
 {{< rawhtml >}}
@@ -237,12 +238,13 @@ hideFooter: true
   </div>
 
   <div class="achievement">
-    <div class="achievement-title">▸ ReBAC 기반 권한 관리 설계</div>
+    <div class="achievement-title">▸ OpenFGA 기반 권한 관리 설계</div>
     <div class="achievement-detail">
       차량 10,000대 × 사용자 500명 = 개별 권한 부여 시 튜플 폭발 문제<br>
-      → OpenFGA 기반 ReBAC + Group 패턴으로 <span class="highlight-metric">5,000,000개 → 수천 개</span> 튜플 축소
+      → ReBAC + Group 패턴으로 <span class="highlight-metric">5,000,000개 → 수천 개</span> 튜플 축소<br>
+      → 권한 기반 검색 전략 설계 (Search with Permissions)
     </div>
-    <div class="achievement-link">📝 <a href="/dev-notes/posts/2025-12-03-rebac-group-pattern-real-world/">블로그: ReBAC Group 패턴 실전 적용기</a></div>
+    <div class="achievement-link">📝 <a href="/dev-notes/posts/2025-02-10-rebac-group-pattern-real-world/">블로그: OpenFGA 권한 기반 검색 전략</a></div>
   </div>
 
   <div class="achievement">

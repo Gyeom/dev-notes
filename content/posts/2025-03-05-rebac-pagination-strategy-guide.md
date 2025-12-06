@@ -1,7 +1,7 @@
 ---
 title: "ReBAC 환경에서 페이징 구현 전략 가이드"
 date: 2025-03-05
-draft: false
+draft: true
 tags: ["OpenFGA", "ReBAC", "Pagination", "CQRS", "PostgreSQL"]
 summary: "OpenFGA/SpiceDB 기반 ReBAC 시스템에서 대규모 데이터셋의 페이징을 구현하는 5가지 전략과 실제 아키텍처 패턴을 상세히 다룬다."
 ---
