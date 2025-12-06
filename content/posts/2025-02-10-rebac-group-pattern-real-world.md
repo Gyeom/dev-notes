@@ -440,10 +440,11 @@ class AuthorizationSyncConsumer(
 
 ### 그룹에 회사 권한 부여
 
-```http
+```bash
 POST /api/v1/authorization/vehicle-groups/all/permissions
-Content-Type: application/json
+```
 
+```json
 {
   "subjectType": "COMPANY",
   "subjectId": "Tesla",
@@ -453,10 +454,11 @@ Content-Type: application/json
 
 ### 개별 차량에 사용자 권한 부여
 
-```http
+```bash
 POST /api/v1/authorization/vehicles/v1-uuid/permissions
-Content-Type: application/json
+```
 
+```json
 {
   "subjectType": "USER",
   "subjectId": "alice-uuid",
@@ -466,10 +468,12 @@ Content-Type: application/json
 
 ### 권한 체크
 
-```http
+```bash
 GET /api/v1/authorization/check?resourceType=vehicle&resourceId=v1-uuid&permission=can_view
+```
 
-Response:
+```json
+// Response
 {
   "allowed": true,
   "resolution": "viewer from parent (vehicle_group:all)"
@@ -478,10 +482,12 @@ Response:
 
 ### 내 권한 목록
 
-```http
+```bash
 GET /api/v1/authorization/me/permissions
+```
 
-Response:
+```json
+// Response
 {
   "direct": [
     { "relation": "operator", "resourceType": "vehicle", "resourceId": "v1-uuid" }
