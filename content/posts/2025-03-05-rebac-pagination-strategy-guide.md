@@ -257,7 +257,7 @@ LIMIT 100  -- 여유분 조회
 ### 아키텍처
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Write ["Write Path"]
         API["API<br/>(권한변경)"] --> OpenFGA["OpenFGA<br/>(Source of Truth)"]
         OpenFGA --> Publisher["Event Publisher<br/>(Kafka/CDC)"]
@@ -267,13 +267,13 @@ flowchart TB
 
     subgraph Sync ["Sync Layer"]
         Projector["Permission Projector<br/>• Kafka Consumer / CDC<br/>• OpenFGA Watch API<br/>• Flowtide"]
-        Projector --> Table["Materialized Permission Table"]
+        Projector --> Table["Materialized<br/>Permission Table"]
     end
 
     Table --> QS
 
     subgraph Read ["Read Path"]
-        QS["Query Service"] --> SQL["SELECT d.* FROM documents d<br/>JOIN permissions p<br/>ON d.id = p.object_id<br/>WHERE p.user_id = :userId"]
+        QS["Query Service"] --> SQL["SELECT ... JOIN permissions"]
     end
 
     style Write fill:#e3f2fd
@@ -560,24 +560,23 @@ flowchart TD
 다음은 실제 프로덕션에서 사용 중인 하이브리드 아키텍처다.
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph AppService ["Application Service"]
-        QR["Query Repository<br/>1. Pragmatic Filter (tenant_id)<br/>2. listObjects() → accessible IDs<br/>3. WHERE IN + search + pagination"]
-        QR -->|listObjects| AuthClient["Authorization Service<br/>(Feign)"]
+        QR["Query Repository<br/>Pragmatic Filter → listObjects"]
     end
 
-    AuthClient -->|HTTP| RestAPI
+    QR -->|HTTP| RestAPI
 
     subgraph AuthServer ["Authorization Server"]
-        RestAPI["REST API"] --> AuthSvc["Authorization Service"]
-        AuthSvc --> OpenFGA["OpenFGA<br/>(Source of Truth)"]
-        AuthSvc -->|Kafka Publish| Topics["Kafka Topics<br/>• permission.events<br/>• user.events"]
+        RestAPI["REST API"] --> AuthSvc["Authorization<br/>Service"]
+        AuthSvc --> OpenFGA["OpenFGA"]
+        AuthSvc -->|Kafka| Topics["permission.events"]
     end
 
     Topics --> Consumer
 
-    subgraph AppConsumer ["Application Service (Consumer)"]
-        Consumer["Event Consumer<br/>• 권한 변경 이벤트 수신<br/>• 로컬 DB 동기화"]
+    subgraph AppConsumer ["Consumer"]
+        Consumer["Event Consumer<br/>로컬 DB 동기화"]
     end
 
     style AppService fill:#e3f2fd

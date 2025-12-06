@@ -353,7 +353,7 @@ LIMIT 100
 이벤트 소싱을 사용한다면 권한을 별도 Read Model로 Projection할 수 있다.
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Command ["Command Side"]
         API[API] --> Domain[Domain]
         Domain --> ES[(Event Store)]
@@ -362,9 +362,9 @@ flowchart TB
     ES --> Proj
 
     subgraph Query ["Query Side"]
-        subgraph Proj ["Event Projections"]
-            DRM["Domain Read<br/>Model"]
-            PRM["Permission Read<br/>Model"]
+        subgraph Proj ["Projections"]
+            DRM["Domain<br/>Read Model"]
+            PRM["Permission<br/>Read Model"]
         end
         Proj --> QS["Query Service<br/>(JOIN)"]
     end
