@@ -9,7 +9,19 @@ summary: "코드 변경사항을 AI가 분석해서 Jira 티켓을 자동 생성
 
 긴급 핫픽스 상황에서 코드 수정 후 Jira 티켓까지 빠르게 생성하고 싶었다. Git diff에 변경 내용이 다 있으니, AI가 이를 분석해서 티켓을 자동 생성하면 효율적이겠다고 생각했다.
 
-**자동화 목표**: IDE에서 코드 변경 → 원클릭 → Jira 티켓 생성
+## 사용 흐름
+
+![Jira Ticket Creator Tool Window](/dev-notes/images/posts/jira-automation-main.png)
+
+IntelliJ 오른쪽 Tool Window에서 "Create from Code Changes" 버튼을 클릭하면 현재 uncommitted 변경사항을 AI가 분석한다.
+
+![Create Jira Ticket](/dev-notes/images/posts/jira-automation-create.png)
+
+AI가 생성한 제목과 설명을 확인하고, 필요하면 수정한다. Project, Issue Type, Priority를 선택하고 Create를 누르면 Jira 티켓이 생성된다.
+
+![Settings](/dev-notes/images/posts/jira-automation-settings.png)
+
+Settings에서 Jira 연결 정보와 AI 프로바이더(OpenAI/Claude)를 설정한다. 출력 언어도 한국어, 영어 등 8개 언어를 지원한다.
 
 ---
 
@@ -394,75 +406,6 @@ fun createIssue(
 ```
 
 `customfield_10014`, `customfield_10020` 같은 커스텀 필드는 Jira 인스턴스마다 다를 수 있다.
-
----
-
-## 사용 워크플로우
-
-```
-1. 코드 변경
-2. Tool Window에서 "Create Ticket from Changes" 클릭
-3. AI가 diff 분석해서 제목/설명 생성
-4. 다이얼로그에서 확인/수정
-5. Project, Issue Type, Priority 등 선택
-6. Create 클릭 → Jira 티켓 생성 완료
-```
-
-### Tool Window
-
-![Jira Ticket Creator Tool Window](/dev-notes/images/posts/jira-automation-main.png)
-
-오른쪽 Tool Window에서 내 티켓 목록을 확인하고, "Create from Code Changes" 버튼으로 새 티켓을 생성할 수 있다.
-
-### Settings
-
-![Settings](/dev-notes/images/posts/jira-automation-settings.png)
-
-Jira 연결 정보와 AI 프로바이더(OpenAI/Anthropic)를 설정한다. 출력 언어도 선택 가능하다.
-
-### 티켓 생성 다이얼로그
-
-![Create Jira Ticket](/dev-notes/images/posts/jira-automation-create.png)
-
-AI가 생성한 제목과 설명을 확인하고 수정할 수 있다. "Regenerate" 버튼으로 다시 생성하거나, 직접 편집 후 생성한다.
-
-### 생성 예시
-
-코드 변경:
-```kotlin
-// UserService.kt
-+ fun authenticate(email: String, password: String): AuthResult {
-+     val user = userRepository.findByEmail(email)
-+         ?: return AuthResult.Failure("User not found")
-+
-+     if (!passwordEncoder.matches(password, user.passwordHash)) {
-+         return AuthResult.Failure("Invalid password")
-+     }
-+
-+     return AuthResult.Success(jwtService.generateToken(user))
-+ }
-```
-
-AI 생성 결과:
-```
-Title: 사용자 인증 로직 구현
-
-## What was changed
-- UserService에 authenticate 메서드 추가
-- 이메일로 사용자 조회 후 비밀번호 검증
-- JWT 토큰 생성 및 반환
-
-## Why it was changed
-- 로그인 기능 구현을 위한 인증 로직 필요
-
-## Impact
-- 기존 API에 영향 없음
-- 새로운 /auth/login 엔드포인트에서 사용 예정
-
-## Technical details
-- BCrypt로 비밀번호 검증
-- 인증 실패 시 AuthResult.Failure 반환
-```
 
 ---
 
