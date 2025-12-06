@@ -48,21 +48,21 @@ ListObjects API 제한:
 ### 구현
 
 ```kotlin
-fun getVehicles(userId: UUID, page: Int, size: Int): Page<Vehicle> {
+fun getDocuments(userId: UUID, page: Int, size: Int): Page<Document> {
     // 1. OpenFGA에서 접근 가능한 ID 목록 조회
     val accessibleIds = authorizationApi.listObjects(
         user = "user:$userId",
         relation = "viewer",
-        objectType = "vehicle"
+        objectType = "document"
     )
 
     // 2. 만능 접근 권한 체크
     if (accessibleIds.contains("*")) {
-        return vehicleRepository.findAll(PageRequest.of(page, size))
+        return documentRepository.findAll(PageRequest.of(page, size))
     }
 
     // 3. WHERE IN 절로 필터링 + 페이징
-    return vehicleRepository.findByIdIn(
+    return documentRepository.findByIdIn(
         accessibleIds.map { UUID.fromString(it) },
         PageRequest.of(page, size)
     )
@@ -180,26 +180,26 @@ val checkResults = authorizationApi.batchCheck(
 ### 구현
 
 ```kotlin
-fun getVehicles(
+fun getDocuments(
     userId: UUID,
     tenantId: UUID,  // 로그인 시점에 이미 알고 있는 정보
     searchText: String?,
     page: Int,
     size: Int
-): Page<Vehicle> {
+): Page<Document> {
     // 1. DB에서 테넌트 단위로 먼저 필터링 (OpenFGA 호출 없음!)
-    //    전체 100,000대 → 테넌트 소속 500대로 축소
-    val candidates = vehicleRepository.findByTenantIdAndSearchText(
+    //    전체 100,000건 → 테넌트 소속 500건으로 축소
+    val candidates = documentRepository.findByTenantIdAndSearchText(
         tenantId = tenantId,
         searchText = searchText,
         pageable = PageRequest.of(page, size * 2)  // 여유분 조회
     )
 
-    // 2. 줄어든 후보(500대)에 대해서만 BatchCheck
+    // 2. 줄어든 후보(500건)에 대해서만 BatchCheck
     val accessibleIds = authorizationApi.batchCheck(
         user = "user:$userId",
         relation = "viewer",
-        objects = candidates.map { "vehicle:${it.id}" }
+        objects = candidates.map { "document:${it.id}" }
     ).filter { it.allowed }.map { it.objectId }
 
     // 3. 권한 있는 것만 반환
@@ -225,9 +225,9 @@ Pragmatic Filtering:
 
 ```sql
 -- 핵심: OpenFGA 호출 전에 DB에서 대폭 필터링
-SELECT * FROM vehicles
+SELECT * FROM documents
 WHERE tenant_id = :tenantId  -- 여기서 99%가 걸러짐!
-  AND name LIKE :searchText
+  AND title LIKE :searchText
 ORDER BY created_at DESC
 LIMIT 100  -- 여유분 조회
 -- 이후 100건에 대해서만 BatchCheck 실행
@@ -601,20 +601,20 @@ flowchart TB
 **리터럴 리스트 (Direct ID List)**
 
 ```sql
-SELECT * FROM vehicles WHERE id IN ('v1', 'v2', 'v3', ..., 'v10000');
+SELECT * FROM documents WHERE id IN ('d1', 'd2', 'd3', ..., 'd10000');
 ```
 
 내부적으로 OR 조건으로 변환된다.
 
 ```sql
-WHERE id = 'v1' OR id = 'v2' OR id = 'v3' ...
+WHERE id = 'd1' OR id = 'd2' OR id = 'd3' ...
 ```
 
 **Subquery Expression**
 
 ```sql
-SELECT * FROM vehicles
-WHERE id IN (SELECT vehicle_id FROM memberships WHERE group_id IN ('g1', 'g2'));
+SELECT * FROM documents
+WHERE id IN (SELECT document_id FROM folder_documents WHERE folder_id IN ('f1', 'f2'));
 ```
 
 Semi-Join으로 최적화된다. Hash Semi Join, Nested Loop Semi Join 등 DB가 최적 전략을 선택한다.
@@ -664,12 +664,12 @@ Hash Semi Join 사용. **4.5배 빠르다.**
 **권장: Subquery 방식**
 
 ```kotlin
-val vehicleIdsInGroups = JPAExpressions
-    .select(membership.vehicleId)
-    .from(membership)
-    .where(membership.groupId.`in`(accessibleGroupIds))
+val documentIdsInFolders = JPAExpressions
+    .select(folderDocument.documentId)
+    .from(folderDocument)
+    .where(folderDocument.folderId.`in`(accessibleFolderIds))
 
-predicate.and(QVehicleEntity.vehicleEntity.id.`in`(vehicleIdsInGroups))
+predicate.and(QDocumentEntity.documentEntity.id.`in`(documentIdsInFolders))
 ```
 
 DB 엔진이 최적의 실행 계획을 선택한다. 네트워크 전송량도 최소화된다.
@@ -677,11 +677,11 @@ DB 엔진이 최적의 실행 계획을 선택한다. 네트워크 전송량도 
 **비권장: Direct ID List**
 
 ```kotlin
-val vehicleIds = membershipRepository
-    .findAllByGroupIdIn(accessibleGroupIds)
-    .map { it.vehicleId }
+val documentIds = folderDocumentRepository
+    .findAllByFolderIdIn(accessibleFolderIds)
+    .map { it.documentId }
 
-predicate.and(QVehicleEntity.vehicleEntity.id.`in`(vehicleIds))
+predicate.and(QDocumentEntity.documentEntity.id.`in`(documentIds))
 ```
 
 Application에서 중간 결과를 메모리에 로드하고, 대량의 ID를 SQL로 전송한다.
@@ -691,26 +691,26 @@ Application에서 중간 결과를 메모리에 로드하고, 대량의 ID를 SQ
 OpenFGA `listObjects`로 ID 목록을 가져온 후 DB를 조회하는 "전략 1"의 경우를 보자.
 
 1. **소규모 (< 1,000개)**: Direct ID List도 괜찮다
-2. **중규모 이상**: 그룹-차량 매핑 테이블을 만들고 Subquery로 처리
+2. **중규모 이상**: 폴더-문서 매핑 테이블을 만들고 Subquery로 처리
 
 ```kotlin
-// 그룹 ID만 전달하고, DB에서 Subquery로 차량 조회
-fun findVehiclesByGroups(groupIds: List<String>, pageable: Pageable): Page<Vehicle> {
-    val vehicleIdsSubquery = JPAExpressions
-        .select(groupMembership.vehicleId)
-        .from(groupMembership)
-        .where(groupMembership.groupId.`in`(groupIds))
+// 폴더 ID만 전달하고, DB에서 Subquery로 문서 조회
+fun findDocumentsByFolders(folderIds: List<String>, pageable: Pageable): Page<Document> {
+    val documentIdsSubquery = JPAExpressions
+        .select(folderDocument.documentId)
+        .from(folderDocument)
+        .where(folderDocument.folderId.`in`(folderIds))
 
     return jpaQueryFactory
-        .selectFrom(vehicle)
-        .where(vehicle.id.`in`(vehicleIdsSubquery))
+        .selectFrom(document)
+        .where(document.id.`in`(documentIdsSubquery))
         .offset(pageable.offset)
         .limit(pageable.pageSize.toLong())
         .fetch()
 }
 ```
 
-이 방식은 "Materialize 패턴"의 경량 버전이다. 권한 변경 시 `group_membership` 테이블만 동기화하면 된다.
+이 방식은 "Materialize 패턴"의 경량 버전이다. 권한 변경 시 `folder_document` 테이블만 동기화하면 된다.
 
 ## 정리
 
