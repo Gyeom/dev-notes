@@ -2,7 +2,7 @@
 title: "Rate Limiting 심층 분석: 알고리즘부터 분산 환경 구현까지"
 date: 2024-08-20
 draft: false
-tags: ["Rate-Limiting", "Redis", "분산시스템", "API", "Spring", "Bucket4j", "시스템설계"]
+tags: ["Rate-Limiting", "Redis", "분산시스템", "Spring Cloud Gateway", "Bucket4j"]
 categories: ["백엔드"]
 summary: "API를 보호하는 Rate Limiting의 핵심 알고리즘(Token Bucket, Sliding Window 등)을 비교하고, Redis + Lua를 활용한 분산 환경 구현, Spring Boot 적용 방법까지 정리한다."
 ---
@@ -550,15 +550,110 @@ class ApiController {
 }
 ```
 
+### 방법 3: Spring Cloud Gateway
+
+API Gateway를 사용한다면 [Spring Cloud Gateway](https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway/gatewayfilter-factories/requestratelimiter-factory.html)의 내장 Rate Limiter가 가장 간단하다.
+
+**의존성**
+
+```kotlin
+// build.gradle.kts
+implementation("org.springframework.cloud:spring-cloud-starter-gateway")
+implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
+```
+
+**설정**
+
+```yaml
+# application.yml
+rate-limit:
+  default-replenish-rate: 10   # 초당 토큰 리필
+  default-burst-capacity: 20   # 버킷 용량
+  default-requested-tokens: 1  # 요청당 소비 토큰
+```
+
+```kotlin
+@Configuration
+@ConfigurationProperties(prefix = "rate-limit")
+data class RateLimitProperties(
+    var defaultReplenishRate: Int = 10,
+    var defaultBurstCapacity: Int = 20,
+    var defaultRequestedTokens: Int = 1,
+)
+
+@Configuration
+class RateLimitConfig(
+    private val properties: RateLimitProperties,
+) {
+    @Bean
+    fun redisRateLimiter(): RedisRateLimiter = RedisRateLimiter(
+        properties.defaultReplenishRate,
+        properties.defaultBurstCapacity,
+        properties.defaultRequestedTokens,
+    )
+
+    @Bean
+    fun userKeyResolver(): KeyResolver = KeyResolver { exchange ->
+        // JWT에서 User ID 추출
+        val authHeader = exchange.request.headers["Authorization"]?.firstOrNull()
+        if (authHeader?.startsWith("Bearer ") == true) {
+            val token = authHeader.substring(7)
+            val parts = token.split(".")
+            if (parts.size == 3) {
+                val payload = String(Base64.getUrlDecoder().decode(parts[1]))
+                val subPattern = """"sub"\s*:\s*"([^"]+)"""".toRegex()
+                subPattern.find(payload)?.groupValues?.get(1)
+                    ?.let { return@KeyResolver Mono.just("user:$it") }
+            }
+        }
+        // Fallback: IP 기반
+        exchange.request.remoteAddress
+            ?.let { Mono.just("ip:${it.address.hostAddress}") }
+            ?: Mono.just("unknown")
+    }
+}
+```
+
+**라우트에 적용**
+
+```kotlin
+@Configuration
+class GatewayRoutesConfig(
+    private val redisRateLimiter: RedisRateLimiter,
+    private val userKeyResolver: KeyResolver,
+) {
+    @Bean
+    fun routeLocator(builder: RouteLocatorBuilder): RouteLocator = builder.routes()
+        .route("api") {
+            it.path("/api/**")
+                .filters { f ->
+                    f.requestRateLimiter { config ->
+                        config.setRateLimiter(redisRateLimiter)
+                        config.setKeyResolver(userKeyResolver)
+                    }
+                }
+                .uri("http://localhost:8081")
+        }
+        .build()
+}
+```
+
+**특징**
+- Redis 기반 Token Bucket 알고리즘 내장
+- `KeyResolver`로 사용자별/IP별 등 유연한 키 설정
+- Gateway 레벨에서 모든 라우트에 일괄 적용 가능
+- 429 응답 시 `X-RateLimit-*` 헤더 자동 추가
+
 ### 방법 비교
 
-| 기준 | Bucket4j | Resilience4j |
-|------|----------|--------------|
-| 알고리즘 | Token Bucket | Sliding Window |
-| 분산 지원 | Redis, Hazelcast 등 | 기본 인메모리 |
-| Burst 허용 | O | X |
-| 기타 기능 | Rate Limiting 전용 | Circuit Breaker, Retry 등 통합 |
-| 사용 시점 | API Rate Limiting | 회복탄력성 전반 |
+| 기준 | Bucket4j | Resilience4j | Spring Cloud Gateway |
+|------|----------|--------------|---------------------|
+| 알고리즘 | Token Bucket | Sliding Window | Token Bucket |
+| 분산 지원 | Redis, Hazelcast 등 | 기본 인메모리 | Redis |
+| Burst 허용 | O | X | O |
+| 적용 레벨 | Application | Application | Gateway |
+| 기타 기능 | Rate Limiting 전용 | Circuit Breaker 등 | 라우팅, 필터 통합 |
+| 사용 시점 | 세밀한 API 제한 | 회복탄력성 전반 | API Gateway 구축 시 |
 
 ## HTTP 응답 설계
 
