@@ -1,7 +1,7 @@
 ---
 title: "ReBAC Group 패턴 실전 적용기: OpenFGA + Spring Boot"
 date: 2025-12-03
-tags: ["OpenFGA", "ReBAC", "Authorization", "Spring-Boot", "Kotlin", "Kafka"]
+tags: ["OpenFGA", "ReBAC", "Authorization", "Spring-Boot", "Kotlin"]
 categories: ["Architecture"]
 summary: "OpenFGA 기반 ReBAC에서 Group 패턴을 적용해 대규모 리소스 권한 관리를 효율화한 실제 사례를 분석한다. Dual Source 패턴으로 ListObjects 한계도 극복했다."
 ---
@@ -733,7 +733,7 @@ P99 레이턴시 관리가 훨씬 쉬워진다.
 | 그룹이 자주 변경됨 | ❌ 동적 그룹 |
 | "내 차량만 보기" 기능 | 🔀 하이브리드 |
 
-하이브리드 예시:
+하이브리드 방식은 이렇게 구현한다.
 
 ```kotlin
 fun getVehicles(filter: VehicleFilter, pageable: Pageable): Page<Vehicle> {
@@ -763,7 +763,7 @@ Group 패턴은 **벌크 권한 관리의 핵심**이다.
 그룹 부여: O(users + groups + resources)
 ```
 
-특히 **강제 그룹화**를 적용하면:
+특히 **강제 그룹화**를 적용하면 다음과 같은 효과가 있다.
 
 | 항목 | 효과 |
 |------|------|

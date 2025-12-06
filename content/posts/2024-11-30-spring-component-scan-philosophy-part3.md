@@ -485,7 +485,7 @@ Import 패턴은 테스트를 쉽게 만든다.
 
 ### Hexagonal Architecture와의 연결
 
-[Alistair Cockburn의 원문](https://alistair.cockburn.us/hexagonal-architecture/)에서 Hexagonal Architecture의 목표를 이렇게 정의한다:
+[Alistair Cockburn의 원문](https://alistair.cockburn.us/hexagonal-architecture/)에서 Hexagonal Architecture의 목표를 이렇게 정의한다.
 
 > "Allow an application to equally be driven by users, programs, automated test or batch scripts"
 

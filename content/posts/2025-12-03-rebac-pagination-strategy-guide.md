@@ -2,7 +2,7 @@
 title: "ReBAC 환경에서 페이징 구현 전략 가이드"
 date: 2025-12-03
 draft: false
-tags: ["OpenFGA", "ReBAC", "Authorization", "Pagination", "CQRS", "PostgreSQL", "Query Optimization"]
+tags: ["OpenFGA", "ReBAC", "Pagination", "CQRS", "PostgreSQL"]
 summary: "OpenFGA/SpiceDB 기반 ReBAC 시스템에서 대규모 데이터셋의 페이징을 구현하는 5가지 전략과 실제 아키텍처 패턴을 상세히 다룬다."
 ---
 
@@ -141,7 +141,7 @@ fun getDocuments(userId: UUID, searchText: String, pageSize: Int, cursor: String
 
 ### 핵심 포인트
 
-**같은 revision에서 모든 체크를 실행해야 한다.** 일관성을 보장하려면:
+**같은 revision에서 모든 체크를 실행해야 한다.** 일관성을 보장하는 방법이다.
 
 ```kotlin
 // SpiceDB/OpenFGA에서 consistency token 사용
@@ -381,7 +381,7 @@ class DocumentQueryRepository(
 user:alice → member → team:engineering → viewer → document:doc-123
 ```
 
-이 관계를 Materialize하면:
+이 관계를 Materialize하면 다음처럼 저장된다.
 
 ```kotlin
 // OpenFGA Watch 또는 Flowtide가 관계를 펼쳐서 저장
@@ -734,7 +734,7 @@ Application에서 중간 결과를 메모리에 로드하고, 대량의 ID를 SQ
 
 ### ReBAC에서의 적용
 
-OpenFGA `listObjects`로 ID 목록을 가져온 후 DB를 조회하는 "전략 1"에서:
+OpenFGA `listObjects`로 ID 목록을 가져온 후 DB를 조회하는 "전략 1"의 경우를 보자.
 
 1. **소규모 (< 1,000개)**: Direct ID List도 괜찮다
 2. **중규모 이상**: 그룹-차량 매핑 테이블을 만들고 Subquery로 처리

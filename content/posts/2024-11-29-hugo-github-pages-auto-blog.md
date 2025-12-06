@@ -238,7 +238,7 @@ gh auth setup-git
 
 ### 렌더 훅 생성
 
-`layouts/_default/_markup/render-codeblock-mermaid.html`:
+`layouts/_default/_markup/render-codeblock-mermaid.html` 파일을 만든다.
 
 ```html
 <pre class="mermaid">
@@ -250,7 +250,7 @@ gh auth setup-git
 
 ### Mermaid 스크립트 로드
 
-`layouts/partials/extend_footer.html`:
+`layouts/partials/extend_footer.html` 파일을 만든다.
 
 ```html
 <script type="module">
@@ -280,7 +280,7 @@ flowchart LR
 ```
 ````
 
-결과:
+이렇게 렌더링된다.
 
 ```mermaid
 flowchart LR

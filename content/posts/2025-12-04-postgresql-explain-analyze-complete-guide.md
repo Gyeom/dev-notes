@@ -51,7 +51,7 @@ flowchart BT
 
 ### cost (예상 비용)
 
-`cost=0.00..458.00`에서:
+`cost=0.00..458.00`의 의미는 다음과 같다.
 - **0.00**: startup cost (첫 번째 행 반환 전 비용)
 - **458.00**: total cost (모든 행 반환까지의 총 비용)
 
@@ -682,7 +682,7 @@ SELECT * FROM addresses
 WHERE city = 'Seoul' AND country = 'Korea';
 ```
 
-PostgreSQL은 각 조건을 독립적으로 계산한다:
+PostgreSQL은 각 조건을 독립적으로 계산한다.
 ```
 selectivity = selectivity(city='Seoul') × selectivity(country='Korea')
             = 0.01 × 0.05 = 0.0005
@@ -830,7 +830,7 @@ rows=100 (예상) vs rows=10000 (실제)
 
 ### 2. Seq Scan이 의도치 않게 발생하는가?
 
-인덱스가 있는데 Seq Scan이면:
+인덱스가 있는데 Seq Scan이면 원인은 대체로 세 가지다.
 - `random_page_cost`가 너무 높음
 - 통계가 오래됨
 - 너무 많은 행을 조회해서 Seq Scan이 실제로 최적
@@ -909,7 +909,7 @@ LIMIT 10;
 
 ## 정리
 
-EXPLAIN ANALYZE를 효과적으로 사용하려면:
+EXPLAIN ANALYZE를 효과적으로 사용하려면 다음을 기억하자.
 
 1. **cost, rows, width**의 의미를 이해하라
 2. **Scan 타입**별 특성과 적합한 상황을 파악하라

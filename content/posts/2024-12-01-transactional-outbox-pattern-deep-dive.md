@@ -2,7 +2,7 @@
 title: "Transactional Outbox 패턴으로 메시지 발행 신뢰성 확보하기"
 date: 2024-12-01
 draft: false
-tags: ["Outbox", "Kafka", "Spring", "분산시스템", "이벤트-드리븐", "마이크로서비스", "CDC", "Debezium"]
+tags: ["Outbox", "Kafka", "Spring", "분산시스템", "CDC"]
 categories: ["백엔드"]
 summary: "DB 트랜잭션과 Kafka 메시지 발행의 원자성을 보장하는 Transactional Outbox 패턴을 정리한다. Spring @TransactionalEventListener 구현, Polling vs CDC 비교, 재시도 전략까지."
 ---

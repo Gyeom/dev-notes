@@ -665,7 +665,7 @@ browser_take_screenshot({
 })
 ```
 
-권장 viewport 높이:
+권장 viewport 높이다.
 - 목록 페이지: 400-500px
 - 상세 페이지: 600-700px
 - 전체 페이지: `fullPage: true`

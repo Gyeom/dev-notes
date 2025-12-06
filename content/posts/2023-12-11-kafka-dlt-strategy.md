@@ -65,7 +65,7 @@ fun consume(record: ConsumerRecord<String, String>) {
 
 ### 재시도 흐름
 
-`attempts = 5`, `delay = 5000`, `multiplier = 2.0` 설정 시:
+`attempts = 5`, `delay = 5000`, `multiplier = 2.0` 설정 시 흐름은 다음과 같다.
 
 ```
 1차 시도 → 실패 → order.created.retry-0 (5초 후)
@@ -241,7 +241,7 @@ curl -X POST http://api-server/v1/kafka/control \
 
 ### Retryable 예외
 
-일시적이며 재시도로 해결될 가능성이 있는 예외:
+일시적이며 재시도로 해결될 가능성이 있는 예외다.
 
 - 네트워크 타임아웃
 - 외부 API 일시 장애
@@ -250,7 +250,7 @@ curl -X POST http://api-server/v1/kafka/control \
 
 ### Non-Retryable 예외
 
-재시도해도 해결되지 않는 예외:
+재시도해도 해결되지 않는 예외다.
 
 - 메시지 역직렬화 실패 (`DeserializationException`)
 - 데이터 유효성 검증 실패
