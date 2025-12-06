@@ -315,19 +315,25 @@ OpenFGA의 `ListObjects`는 대규모에서 한계가 있다.
 **해결책**: 권한 인덱스를 별도 DB에 유지한다.
 
 ```mermaid
-flowchart LR
-    subgraph Check ["권한 검증"]
-        Q1["alice가 v1을<br/>조회할 수 있나?"]
-        Q1 --> OpenFGA["OpenFGA<br/>Check API<br/>(정확한 상속 계산)"]
-    end
+flowchart TB
+    subgraph DualSource [" "]
+        direction LR
+        subgraph Check ["권한 검증"]
+            direction TB
+            Q1["alice가 v1을<br/>조회할 수 있나?"]
+            Q1 --> OpenFGA["OpenFGA Check API<br/>(정확한 상속 계산)"]
+        end
 
-    subgraph List ["목록 조회"]
-        Q2["alice가 접근 가능한<br/>차량 목록 (페이징)"]
-        Q2 --> DB["fleet DB<br/>tbl_relation_tuples<br/>(SQL 페이징/정렬)"]
+        subgraph List ["목록 조회"]
+            direction TB
+            Q2["alice가 접근 가능한<br/>차량 목록 (페이징)"]
+            Q2 --> DB["fleet DB<br/>tbl_relation_tuples<br/>(SQL 페이징/정렬)"]
+        end
     end
 
     style Check fill:#e3f2fd
     style List fill:#e8f5e9
+    style DualSource fill:transparent,stroke:transparent
 ```
 
 ### DB 스키마
