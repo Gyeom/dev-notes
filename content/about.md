@@ -364,7 +364,7 @@ hideFooter: true
   <div class="activity-meta">IntelliJ Plugin · 2025.11 ~</div>
   <div class="activity-desc">
     Git Diff를 분석해 LLM(OpenAI/Claude)으로 Jira 티켓을 자동 생성하는 플러그인<br>
-    → <a href="/dev-notes/posts/2024-10-29-intellij-plugin-jira-automation-llm/">개발기</a>
+    → <a href="/dev-notes/posts/2025-11-29-intellij-plugin-jira-automation-llm/">개발기</a>
   </div>
 </div>
 

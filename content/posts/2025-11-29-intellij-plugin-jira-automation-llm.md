@@ -1,6 +1,6 @@
 ---
 title: "IntelliJ 플러그인으로 Git Diff → Jira 티켓 자동화하기"
-date: 2024-10-29
+date: 2025-11-29
 draft: false
 tags: ["IntelliJ", "Plugin", "Jira", "LLM", "OpenAI", "Claude", "Kotlin", "자동화"]
 categories: ["개발도구"]
