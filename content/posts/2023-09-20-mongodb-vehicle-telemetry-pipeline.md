@@ -1,6 +1,7 @@
 ---
 title: "차량 텔레매틱스 데이터 파이프라인에서 MongoDB 활용과 한계"
 date: 2023-09-20
+draft: true
 tags: ["MongoDB", "Time-Series", "Vehicle", "ClickHouse"]
 categories: ["Architecture"]
 summary: "차량 엣지에서 올라오는 텔레매틱스 데이터를 MongoDB로 처리할 때의 활용법, 성능 한계, 그리고 대안 아키텍처를 분석한다."
