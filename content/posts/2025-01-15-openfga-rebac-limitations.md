@@ -334,18 +334,19 @@ async def sync_permissions():
 
 ### 5. Pragmatic Filtering
 
-가장 실용적인 전략이다. 테넌트 ID, 조직 ID 등 **이미 알고 있는 컨텍스트**로 먼저 필터링한다.
+가장 실용적인 전략이다. **OpenFGA 호출 전에** 테넌트 ID, 조직 ID 등 이미 알고 있는 컨텍스트로 먼저 DB에서 필터링한다.
 
 ```sql
--- OpenFGA 호출 전에 DB에서 대폭 필터링
+-- 핵심: OpenFGA 호출 전에 DB에서 대폭 필터링
 SELECT * FROM documents
-WHERE tenant_id = :user_tenant_id
+WHERE tenant_id = :user_tenant_id  -- 100만 건 → 1,000건으로 축소
   AND created_at > :date_filter
 ORDER BY created_at DESC
 LIMIT 100
+-- 이후 100건에 대해서만 BatchCheck 실행
 ```
 
-이후 줄어든 결과에 Search then Check를 적용한다. 많은 실무 사례에서 이 조합이 충분하다.
+전체 데이터에 권한 체크하는 대신, 줄어든 후보에만 체크한다. 많은 실무 사례에서 이 조합이 충분하다.
 
 ### CQRS + 권한 Projection 아키텍처
 

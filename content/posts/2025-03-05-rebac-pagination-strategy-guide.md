@@ -173,53 +173,64 @@ val checkResults = authorizationApi.batchCheck(
 
 ## 전략 3: Pragmatic Filtering
 
-이미 알고 있는 컨텍스트(테넌트, 조직 등)로 먼저 필터링한다.
+**OpenFGA 호출 전에** 이미 알고 있는 컨텍스트(테넌트, 조직 등)로 먼저 DB에서 필터링한다.
+
+핵심은 권한 체크 대상을 줄이는 것이다.
 
 ### 구현
 
 ```kotlin
 fun getVehicles(
     userId: UUID,
-    company: Company,
+    tenantId: UUID,  // 로그인 시점에 이미 알고 있는 정보
     searchText: String?,
     page: Int,
     size: Int
 ): Page<Vehicle> {
-    // 1. 회사 레벨 권한으로 먼저 대폭 필터링
-    val companyVehicles = authorizationApi.listObjects(
-        user = "company:${company.id}",
-        relation = "viewer",
-        objectType = "vehicle"
+    // 1. DB에서 테넌트 단위로 먼저 필터링 (OpenFGA 호출 없음!)
+    //    전체 100,000대 → 테넌트 소속 500대로 축소
+    val candidates = vehicleRepository.findByTenantIdAndSearchText(
+        tenantId = tenantId,
+        searchText = searchText,
+        pageable = PageRequest.of(page, size * 2)  // 여유분 조회
     )
 
-    // 2. 사용자 개인 권한 추가
-    val userVehicles = authorizationApi.listObjects(
+    // 2. 줄어든 후보(500대)에 대해서만 BatchCheck
+    val accessibleIds = authorizationApi.batchCheck(
         user = "user:$userId",
         relation = "viewer",
-        objectType = "vehicle"
-    )
+        objects = candidates.map { "vehicle:${it.id}" }
+    ).filter { it.allowed }.map { it.objectId }
 
-    val accessibleIds = (companyVehicles + userVehicles).toSet()
-
-    // 3. DB 쿼리에 검색 조건 + 권한 필터 적용
-    return vehicleRepository.findByIdInAndSearchText(
-        ids = accessibleIds,
-        searchText = searchText,
-        pageable = PageRequest.of(page, size)
-    )
+    // 3. 권한 있는 것만 반환
+    return candidates.filter { it.id in accessibleIds }
+        .take(size)
+        .let { PageImpl(it, PageRequest.of(page, size), it.size.toLong()) }
 }
 ```
+
+### Search then Check와의 차이
+
+```
+Search then Check (전략 2):
+  1. DB 전체 검색 (100,000건) → 2. 100,000건 권한 체크 (느림)
+
+Pragmatic Filtering:
+  1. DB 테넌트 필터 (500건) → 2. 500건 권한 체크 (빠름)
+```
+
+**테넌트 필터가 OpenFGA 호출 횟수를 200배 줄인다.**
 
 ### 멀티테넌트 환경에서의 활용
 
 ```sql
--- 테넌트 필터가 이미 대부분의 데이터를 걸러낸다
+-- 핵심: OpenFGA 호출 전에 DB에서 대폭 필터링
 SELECT * FROM vehicles
-WHERE tenant_id = :tenantId  -- 여기서 99%가 걸러짐
-  AND id IN (:accessibleIds)  -- 나머지 권한 필터
+WHERE tenant_id = :tenantId  -- 여기서 99%가 걸러짐!
   AND name LIKE :searchText
 ORDER BY created_at DESC
-LIMIT 20 OFFSET 0
+LIMIT 100  -- 여유분 조회
+-- 이후 100건에 대해서만 BatchCheck 실행
 ```
 
 ### 장점
