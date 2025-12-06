@@ -440,6 +440,61 @@ class AuthorizationSyncConsumer(
 }
 ```
 
+### DB 쿼리 최적화: Subquery vs Direct ID List
+
+`WHERE IN (id1, id2, ...)` 쿼리가 왜 비효율적인지 살펴본다.
+
+**리터럴 리스트 (Direct ID List)**
+
+```sql
+SELECT * FROM vehicles WHERE id IN ('v1', 'v2', 'v3', ..., 'v10000');
+```
+
+내부적으로 OR 조건으로 변환된다.
+
+```sql
+WHERE id = 'v1' OR id = 'v2' OR id = 'v3' ...
+```
+
+**Subquery Expression**
+
+```sql
+SELECT * FROM vehicles
+WHERE id IN (SELECT vehicle_id FROM group_memberships WHERE group_id IN ('g1', 'g2'));
+```
+
+Semi-Join으로 최적화된다. Hash Semi Join, Nested Loop Semi Join 등 DB가 최적 전략을 선택한다.
+
+**실행 계획 비교** (700개 ID 테스트)
+
+| 방식 | 실행 계획 | 시간 |
+|------|-----------|------|
+| Direct ID List | Seq Scan (인덱스 미사용) | ~1074ms |
+| Subquery | Hash Semi Join | ~239ms |
+
+**4.5배 성능 차이**가 발생한다. IN 절에 ID가 많아지면 쿼리 플래너가 인덱스를 포기하고 풀스캔할 수 있다.
+
+**QueryDSL 권장 패턴**
+
+```kotlin
+// ✅ 권장: Subquery
+val accessibleVehicleIds = JPAExpressions
+    .select(relationTuple.resourceId)
+    .from(relationTuple)
+    .where(
+        relationTuple.resourceType.eq("vehicle")
+            .and(relationTuple.subjectId.eq(userId.toString()))
+    )
+
+predicate.and(QVehicle.vehicle.id.`in`(accessibleVehicleIds))
+
+// ❌ 비권장: Direct ID List
+val vehicleIds = relationTupleRepository.findAll().map { it.resourceId }
+predicate.and(QVehicle.vehicle.id.`in`(vehicleIds))
+```
+
+앞서 소개한 `tbl_relation_tuples`를 Subquery로 활용하면 OpenFGA 호출 없이 DB JOIN만으로 권한 필터링을 처리할 수 있다.
+
 ---
 
 ## 실제 API 예시
@@ -736,138 +791,6 @@ fun getVehicles(filter: VehicleFilter, pageable: Pageable): Page<Vehicle> {
     }
 }
 ```
-
----
-
-## DB 쿼리 최적화: Subquery vs Direct ID List
-
-`WHERE IN (id1, id2, ...)` 쿼리가 왜 비효율적인지 살펴본다.
-
-### PostgreSQL IN 절의 두 가지 형태
-
-**리터럴 리스트 (Direct ID List)**
-
-```sql
-SELECT * FROM vehicles WHERE id IN ('v1', 'v2', 'v3', ..., 'v10000');
-```
-
-내부적으로 OR 조건으로 변환된다.
-
-```sql
-WHERE id = 'v1' OR id = 'v2' OR id = 'v3' ...
-```
-
-**Subquery Expression**
-
-```sql
-SELECT * FROM vehicles
-WHERE id IN (SELECT vehicle_id FROM group_memberships WHERE group_id IN ('g1', 'g2'));
-```
-
-Semi-Join으로 최적화된다. Hash Semi Join, Nested Loop Semi Join 등 DB가 최적 전략을 선택한다.
-
-### 실행 계획 비교
-
-700개 ID로 테스트한 결과다.
-
-**Direct ID List**
-
-```
-Seq Scan on vehicles  (cost=0.00..1364.00 rows=700 width=32)
-  Filter: (id = ANY ('{v1,v2,v3,...}'::text[]))
-  actual time=1074.035ms
-```
-
-Sequential Scan 발생. 인덱스 미사용.
-
-**Subquery 방식**
-
-```
-Hash Semi Join  (cost=18.00..51.08 rows=700 width=32)
-  Hash Cond: (vehicles.id = group_memberships.vehicle_id)
-  actual time=239.035ms
-```
-
-Hash Semi Join 사용. **4.5배 빠르다.**
-
-### 성능 차이 원인
-
-| 방식 | 처리 방법 | 복잡도 |
-|------|-----------|--------|
-| Direct ID List | 각 값마다 개별 비교 (OR) | O(n×m) |
-| Subquery | Hash 테이블 생성 후 조인 | O(n+m) |
-
-### 규모별 권장 방식
-
-| ID 개수 | 권장 방식 | 이유 |
-|---------|-----------|------|
-| < 128개 | 어느 방식이든 OK | 성능 차이 미미 |
-| 128 ~ 1,000개 | Subquery | Hash Join 이점 |
-| 1,000 ~ 10,000개 | **반드시 Subquery** | 20배 이상 성능 차이 |
-| > 10,000개 | Subquery + Batch | 쿼리 계획 시간 고려 |
-
-### QueryDSL에서의 적용
-
-**권장: Subquery 방식**
-
-```kotlin
-val vehicleIdsInGroups = JPAExpressions
-    .select(groupMembership.vehicleId)
-    .from(groupMembership)
-    .where(groupMembership.groupId.`in`(accessibleGroupIds))
-
-predicate.and(QVehicle.vehicle.id.`in`(vehicleIdsInGroups))
-```
-
-DB 엔진이 최적의 실행 계획을 선택한다. 네트워크 전송량도 최소화된다.
-
-**비권장: Direct ID List**
-
-```kotlin
-val vehicleIds = groupMembershipRepository
-    .findAllByGroupIdIn(accessibleGroupIds)
-    .map { it.vehicleId }
-
-predicate.and(QVehicle.vehicle.id.`in`(vehicleIds))
-```
-
-Application에서 중간 결과를 메모리에 로드하고, 대량의 ID를 SQL로 전송한다.
-
-### Dual Source 패턴과의 연결
-
-앞서 소개한 `tbl_relation_tuples` 테이블을 활용하면 Subquery로 처리할 수 있다.
-
-```kotlin
-fun findAccessibleVehicles(
-    userId: UUID,
-    companyCode: String,
-    pageable: Pageable
-): Page<Vehicle> {
-    // Subquery: 권한 테이블에서 접근 가능한 vehicle ID 조회
-    val accessibleVehicleIds = JPAExpressions
-        .select(relationTuple.resourceId)
-        .from(relationTuple)
-        .where(
-            relationTuple.resourceType.eq("vehicle")
-                .and(
-                    relationTuple.subjectType.eq("user")
-                        .and(relationTuple.subjectId.eq(userId.toString()))
-                ).or(
-                    relationTuple.subjectType.eq("company")
-                        .and(relationTuple.subjectId.eq(companyCode))
-                )
-        )
-
-    return jpaQueryFactory
-        .selectFrom(vehicle)
-        .where(vehicle.id.`in`(accessibleVehicleIds))
-        .offset(pageable.offset)
-        .limit(pageable.pageSize.toLong())
-        .fetch()
-}
-```
-
-이 방식은 OpenFGA 호출 없이 DB JOIN만으로 권한 필터링을 처리한다.
 
 ---
 
