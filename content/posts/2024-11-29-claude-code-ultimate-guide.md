@@ -1,5 +1,5 @@
 ---
-title: "Claude Code 완벽 가이드 - 입문부터 고급 활용까지"
+title: "Claude Code 활용법 - 입문부터 고급까지"
 date: 2024-11-29
 draft: false
 tags: ["Claude Code", "AI", "개발도구", "자동화", "MCP", "가이드", "Hugo", "GitHub Pages"]
