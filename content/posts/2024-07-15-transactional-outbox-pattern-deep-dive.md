@@ -719,26 +719,48 @@ class OutboxMetrics(private val meterRegistry: MeterRegistry) {
 
 ### Outbox vs CDC vs Saga
 
+**Transactional Outbox**
+
 ```mermaid
-flowchart TB
-    subgraph "Transactional Outbox"
-        O1[Service] --> O2[DB + Outbox]
-        O2 --> O3[Polling/CDC]
-        O3 --> O4[Message Broker]
-    end
+flowchart LR
+    O1[Service] --> O2[DB + Outbox]
+    O2 --> O3[Polling/CDC]
+    O3 --> O4[Message Broker]
 
-    subgraph "CDC Direct"
-        C1[Service] --> C2[DB]
-        C2 --> C3[Debezium]
-        C3 --> C4[Message Broker]
-    end
+    style O1 fill:#e3f2fd
+    style O2 fill:#e3f2fd
+    style O3 fill:#fff3e0
+    style O4 fill:#e8f5e9
+```
 
-    subgraph "Saga Pattern"
-        S1[Orchestrator] --> S2[Service A]
-        S1 --> S3[Service B]
-        S2 --> S4[Compensate A]
-        S3 --> S5[Compensate B]
-    end
+**CDC Direct**
+
+```mermaid
+flowchart LR
+    C1[Service] --> C2[DB]
+    C2 --> C3[Debezium]
+    C3 --> C4[Message Broker]
+
+    style C1 fill:#e3f2fd
+    style C2 fill:#e3f2fd
+    style C3 fill:#fff3e0
+    style C4 fill:#e8f5e9
+```
+
+**Saga Pattern**
+
+```mermaid
+flowchart LR
+    S1[Orchestrator] --> S2[Service A]
+    S1 --> S3[Service B]
+    S2 --> S4[Compensate A]
+    S3 --> S5[Compensate B]
+
+    style S1 fill:#fff3e0
+    style S2 fill:#e3f2fd
+    style S3 fill:#e3f2fd
+    style S4 fill:#ffcdd2
+    style S5 fill:#ffcdd2
 ```
 
 | 패턴 | 사용 시점 | 복잡도 | 일관성 |
