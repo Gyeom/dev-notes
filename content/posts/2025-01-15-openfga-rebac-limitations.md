@@ -220,16 +220,14 @@ SpiceDB를 사용한다면 [AuthZed Materialize](https://authzed.com/docs/authze
 
 OpenFGA를 사용한다면 [Flowtide](https://koralium.github.io/flowtide/docs/connectors/openfga)가 있다. OpenFGA 권한을 CQRS Read Model로 Materialize한다.
 
-```
-┌──────────────┐     Watch API     ┌──────────────┐
-│   OpenFGA    │ ─────────────────▶│   Flowtide   │
-└──────────────┘                   └──────┬───────┘
-                                          │
-                                          ▼
-                            ┌──────────────────────┐
-                            │  Query Service / ES  │
-                            │  + Materialized ACL  │
-                            └──────────────────────┘
+```mermaid
+flowchart LR
+    OpenFGA[OpenFGA] -->|Watch API| Flowtide[Flowtide]
+    Flowtide --> QS["Query Service / ES<br/>+ Materialized ACL"]
+
+    style OpenFGA fill:#e3f2fd
+    style Flowtide fill:#fff3e0
+    style QS fill:#e8f5e9
 ```
 
 CQRS 아키텍처에서 Query Service가 Materialized 권한을 받아 검색 쿼리에 JOIN할 수 있다.
@@ -353,30 +351,26 @@ LIMIT 100
 
 이벤트 소싱을 사용한다면 권한을 별도 Read Model로 Projection할 수 있다.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Command Side                          │
-│  ┌──────────┐    ┌──────────┐    ┌──────────────────┐  │
-│  │  API     │───▶│  Domain  │───▶│  Event Store     │  │
-│  └──────────┘    └──────────┘    └────────┬─────────┘  │
-└───────────────────────────────────────────│─────────────┘
-                                            │
-                    ┌───────────────────────┼───────────────────────┐
-                    │                       ▼                       │
-                    │  ┌────────────────────────────────────────┐  │
-                    │  │         Event Projections              │  │
-                    │  │  ┌─────────────┐  ┌─────────────────┐  │  │
-                    │  │  │ Domain Read │  │ Permission Read │  │  │
-                    │  │  │   Model     │  │     Model       │  │  │
-                    │  │  └─────────────┘  └─────────────────┘  │  │
-                    │  └────────────────────────────────────────┘  │
-                    │                       │                       │
-                    │                       ▼                       │
-                    │  ┌────────────────────────────────────────┐  │
-                    │  │     Query Service (JOIN)               │  │
-                    │  └────────────────────────────────────────┘  │
-                    │                    Query Side                 │
-                    └───────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Command ["Command Side"]
+        API[API] --> Domain[Domain]
+        Domain --> ES[(Event Store)]
+    end
+
+    ES --> Proj
+
+    subgraph Query ["Query Side"]
+        subgraph Proj ["Event Projections"]
+            DRM["Domain Read<br/>Model"]
+            PRM["Permission Read<br/>Model"]
+        end
+        Proj --> QS["Query Service<br/>(JOIN)"]
+    end
+
+    style Command fill:#e3f2fd
+    style Query fill:#e8f5e9
+    style ES fill:#fff3e0
 ```
 
 `UserGrantedPermission`, `RoleAssigned` 같은 이벤트를 Permission Read Model로 Projection하면 검색 쿼리에서 직접 JOIN이 가능하다. OpenFGA 호출 없이 권한 기반 필터링을 할 수 있다.

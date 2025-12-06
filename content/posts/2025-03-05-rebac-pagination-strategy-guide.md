@@ -245,58 +245,38 @@ LIMIT 20 OFFSET 0
 
 ### 아키텍처
 
+```mermaid
+flowchart TB
+    subgraph Write ["Write Path"]
+        API["API<br/>(권한변경)"] --> OpenFGA["OpenFGA<br/>(Source of Truth)"]
+        OpenFGA --> Publisher["Event Publisher<br/>(Kafka/CDC)"]
+    end
+
+    Publisher --> Projector
+
+    subgraph Sync ["Sync Layer"]
+        Projector["Permission Projector<br/>• Kafka Consumer / CDC<br/>• OpenFGA Watch API<br/>• Flowtide"]
+        Projector --> Table["Materialized Permission Table"]
+    end
+
+    Table --> QS
+
+    subgraph Read ["Read Path"]
+        QS["Query Service"] --> SQL["SELECT d.* FROM documents d<br/>JOIN permissions p<br/>ON d.id = p.object_id<br/>WHERE p.user_id = :userId"]
+    end
+
+    style Write fill:#e3f2fd
+    style Sync fill:#fff3e0
+    style Read fill:#e8f5e9
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Write Path                               │
-│                                                                  │
-│  ┌──────────┐    ┌──────────────┐    ┌──────────────────────┐  │
-│  │ API      │───▶│ OpenFGA      │───▶│ Event Publisher      │  │
-│  │ (권한변경)│    │ (Source of   │    │ (Kafka/CDC)          │  │
-│  │          │    │  Truth)      │    │                      │  │
-│  └──────────┘    └──────────────┘    └──────────┬───────────┘  │
-│                                                  │               │
-└──────────────────────────────────────────────────│───────────────┘
-                                                   │
-                                                   ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                         Sync Layer                                │
-│                                                                   │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │                    Permission Projector                     │  │
-│  │  - Kafka Consumer / CDC Listener                           │  │
-│  │  - OpenFGA Watch API                                       │  │
-│  │  - Flowtide (OpenFGA 전용)                                 │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                              │                                    │
-│                              ▼                                    │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │              Materialized Permission Table                  │  │
-│  │  ┌─────────────────────────────────────────────────────┐   │  │
-│  │  │ user_id | object_type | object_id | relation        │   │  │
-│  │  │─────────│─────────────│───────────│─────────────────│   │  │
-│  │  │ alice   │ document    │ doc-123   │ viewer          │   │  │
-│  │  │ alice   │ document    │ doc-456   │ editor          │   │  │
-│  │  │ bob     │ folder      │ folder-1  │ viewer          │   │  │
-│  │  └─────────────────────────────────────────────────────┘   │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                                                                   │
-└───────────────────────────────────────────────────────────────────┘
-                                                   │
-                                                   ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                          Read Path                                 │
-│                                                                    │
-│  ┌──────────┐    ┌──────────────────────────────────────────────┐ │
-│  │ Query    │───▶│ SELECT d.* FROM documents d                  │ │
-│  │ Service  │    │ JOIN permissions p ON d.id = p.object_id     │ │
-│  │          │    │ WHERE p.user_id = :userId                    │ │
-│  │          │    │   AND p.relation = 'viewer'                  │ │
-│  │          │    │ ORDER BY d.created_at DESC                   │ │
-│  │          │    │ LIMIT 20 OFFSET 0                            │ │
-│  └──────────┘    └──────────────────────────────────────────────┘ │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
-```
+
+**Materialized Permission Table 구조:**
+
+| user_id | object_type | object_id | relation |
+|---------|-------------|-----------|----------|
+| alice | document | doc-123 | viewer |
+| alice | document | doc-456 | editor |
+| bob | folder | folder-1 | viewer |
 
 ### 구현: Kafka 기반 동기화
 
@@ -545,90 +525,53 @@ fun handleGroupMembershipChange(userId: UUID, groupId: String, operation: String
 
 ### 의사결정 플로우차트
 
-```
-시작
-  │
-  ▼
-객체 수가 1,000개 미만인가?
-  │
-  ├─ Yes ──▶ ListObjects then Search
-  │
-  ▼ No
-  │
-테넌트/조직 단위 필터링이 가능한가?
-  │
-  ├─ Yes ──▶ Pragmatic Filtering + ListObjects
-  │
-  ▼ No
-  │
-CQRS 아키텍처인가?
-  │
-  ├─ Yes ──▶ Materialize 패턴
-  │
-  ▼ No
-  │
-검색이 핵심 기능인가?
-  │
-  ├─ Yes ──▶ Elasticsearch + ACL 동기화
-  │
-  ▼ No
-  │
-BatchCheck + 커서 기반 페이지네이션
+```mermaid
+flowchart TD
+    Start([시작]) --> Q1{객체 수 < 1,000?}
+    Q1 -->|Yes| A1[ListObjects then Search]
+    Q1 -->|No| Q2{테넌트/조직 단위<br/>필터링 가능?}
+    Q2 -->|Yes| A2[Pragmatic Filtering<br/>+ ListObjects]
+    Q2 -->|No| Q3{CQRS 아키텍처?}
+    Q3 -->|Yes| A3[Materialize 패턴]
+    Q3 -->|No| Q4{검색이 핵심 기능?}
+    Q4 -->|Yes| A4[Elasticsearch<br/>+ ACL 동기화]
+    Q4 -->|No| A5[BatchCheck<br/>+ 커서 기반 페이지네이션]
+
+    style A1 fill:#c8e6c9
+    style A2 fill:#bbdefb
+    style A3 fill:#ffe0b2
+    style A4 fill:#e1bee7
+    style A5 fill:#b2dfdb
 ```
 
 ## 실제 아키텍처 예시
 
 다음은 실제 프로덕션에서 사용 중인 하이브리드 아키텍처다.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Application Service                         │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                    Query Repository                       │   │
-│  │  1. Pragmatic Filter (tenant_id)                         │   │
-│  │  2. listObjects() → accessible IDs                       │   │
-│  │  3. WHERE IN + search + pagination                       │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              │                                   │
-│                              │ listObjects()                     │
-│                              ▼                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              Authorization Service (Feign)                │   │
-│  └────────────────────────────┬─────────────────────────────┘   │
-└───────────────────────────────│──────────────────────────────────┘
-                                │ HTTP
-                                ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                    Authorization Server                            │
-│                                                                    │
-│  ┌─────────────┐    ┌────────────────┐    ┌──────────────────┐   │
-│  │ REST API   │───▶│ Authorization  │───▶│    OpenFGA       │   │
-│  │            │    │ Service        │    │ (Source of Truth)│   │
-│  └─────────────┘    └───────┬────────┘    └──────────────────┘   │
-│                             │                                     │
-│                             │ Kafka Publish                       │
-│                             ▼                                     │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │                      Kafka Topics                           │  │
-│  │  - permission.events                                        │  │
-│  │  - vehicle.events                                           │  │
-│  │  - user.events                                              │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                             │                                     │
-└─────────────────────────────│─────────────────────────────────────┘
-                              │
-                              ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                    Application Service (Consumer)                  │
-│                                                                    │
-│  ┌────────────────────────────────────────────────────────────┐   │
-│  │                  Event Consumer                             │   │
-│  │  - 권한 변경 이벤트 수신                                     │   │
-│  │  - 로컬 DB 동기화 (tbl_relation_tuples)                      │   │
-│  └────────────────────────────────────────────────────────────┘   │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph AppService ["Application Service"]
+        QR["Query Repository<br/>1. Pragmatic Filter (tenant_id)<br/>2. listObjects() → accessible IDs<br/>3. WHERE IN + search + pagination"]
+        QR -->|listObjects| AuthClient["Authorization Service<br/>(Feign)"]
+    end
+
+    AuthClient -->|HTTP| RestAPI
+
+    subgraph AuthServer ["Authorization Server"]
+        RestAPI["REST API"] --> AuthSvc["Authorization Service"]
+        AuthSvc --> OpenFGA["OpenFGA<br/>(Source of Truth)"]
+        AuthSvc -->|Kafka Publish| Topics["Kafka Topics<br/>• permission.events<br/>• user.events"]
+    end
+
+    Topics --> Consumer
+
+    subgraph AppConsumer ["Application Service (Consumer)"]
+        Consumer["Event Consumer<br/>• 권한 변경 이벤트 수신<br/>• 로컬 DB 동기화"]
+    end
+
+    style AppService fill:#e3f2fd
+    style AuthServer fill:#fff3e0
+    style AppConsumer fill:#e8f5e9
 ```
 
 **사용 전략 조합**:

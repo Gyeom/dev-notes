@@ -259,36 +259,29 @@ Database만 사용하면 성능이 아쉽다.
 
 ### 아키텍처
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│ Main Topic  │────▶│   Retry     │────▶│    DLT      │
-│             │     │   Topics    │     │   Topic     │
-└─────────────┘     └─────────────┘     └──────┬──────┘
-                                               │
-                                               ▼
-                                        ┌─────────────┐
-                                        │  @DltHandler │
-                                        │  DB 저장     │
-                                        └──────┬──────┘
-                                               │
-                                               ▼
-                                        ┌─────────────┐
-                                        │  Database   │
-                                        │  (DLQ 테이블)│
-                                        └──────┬──────┘
-                                               │
-                         ┌─────────────────────┴─────────────────────┐
-                         │              운영자 액션                   │
-                         │  • SQL로 메시지 조회/분석                  │
-                         │  • 메시지 수정 (데이터 오류 수정)          │
-                         │  • 선택적 재처리 트리거                    │
-                         └─────────────────────┬─────────────────────┘
-                                               │
-                                               ▼
-                                        ┌─────────────┐
-                                        │ Main Topic  │
-                                        │ (재발행)     │
-                                        └─────────────┘
+```mermaid
+flowchart TB
+    subgraph Kafka ["Kafka"]
+        MT[Main Topic] --> RT[Retry Topics]
+        RT --> DLT[DLT Topic]
+    end
+
+    DLT --> Handler["@DltHandler<br/>DB 저장"]
+    Handler --> DB[(Database<br/>DLQ 테이블)]
+
+    subgraph Ops ["운영자 액션"]
+        direction LR
+        Q["SQL 조회/분석"]
+        E["메시지 수정"]
+        R["선택적 재처리"]
+    end
+
+    DB --> Ops
+    Ops --> MT2[Main Topic<br/>재발행]
+
+    style Kafka fill:#e1f5fe
+    style Ops fill:#fff3e0
+    style DB fill:#f3e5f5
 ```
 
 ### DLT → Database 저장
@@ -559,26 +552,32 @@ class DlqMetrics(
 
 ## 어떤 걸 선택할까
 
-```
-Kafka 사용 중?
-  ├─ No → PostgreSQL DLQ
-  │        └─ SQL 조회 편의성
-  │
-  └─ Yes → 운영 요구사항 확인
-            │
-            ├─ 단순 재시도만 필요 → Kafka DLT
-            │   └─ @RetryableTopic으로 간단 구현
-            │
-            └─ 운영 편의성 필요 → 하이브리드
-                └─ SQL 조회 + 선택적 재처리 + 감사 로그
+```mermaid
+flowchart TD
+    A{Kafka 사용 중?} -->|No| B[PostgreSQL DLQ]
+    B --> B1[SQL 조회 편의성]
 
-실패 메시지 분석/수정이 필요한가?
-  ├─ Yes → 하이브리드 또는 PostgreSQL DLQ
-  └─ No → Kafka DLT
+    A -->|Yes| C{운영 요구사항}
+    C -->|단순 재시도| D[Kafka DLT]
+    D --> D1["@RetryableTopic으로 간단 구현"]
 
-팀 규모와 운영 복잡도?
-  ├─ 소규모, 단순 → Kafka DLT 또는 PostgreSQL DLQ
-  └─ 대규모, 복잡 → 하이브리드 (Robinhood, Uber 사례)
+    C -->|운영 편의성 필요| E[하이브리드]
+    E --> E1[SQL 조회 + 선택적 재처리 + 감사 로그]
+
+    F{실패 메시지<br/>분석/수정 필요?} -->|Yes| G[하이브리드 또는<br/>PostgreSQL DLQ]
+    F -->|No| H[Kafka DLT]
+
+    I{팀 규모와<br/>운영 복잡도} -->|소규모, 단순| J[Kafka DLT 또는<br/>PostgreSQL DLQ]
+    I -->|대규모, 복잡| K[하이브리드]
+    K --> K1[Robinhood, Uber 사례]
+
+    style B fill:#c8e6c9
+    style D fill:#bbdefb
+    style E fill:#ffe0b2
+    style G fill:#e1bee7
+    style H fill:#bbdefb
+    style J fill:#b2dfdb
+    style K fill:#ffe0b2
 ```
 
 ---
