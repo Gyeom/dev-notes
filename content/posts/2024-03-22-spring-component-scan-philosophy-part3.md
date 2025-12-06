@@ -11,8 +11,8 @@ series_order: 3
 
 ## 시리즈
 
-1. [@ComponentScan의 함정](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
-2. [멀티앱, 하나의 코드베이스](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
+1. [@ComponentScan의 함정](/dev-notes/posts/2024-03-15-spring-component-scan-philosophy-part1/)
+2. [멀티앱, 하나의 코드베이스](/dev-notes/posts/2024-03-18-spring-component-scan-philosophy-part2/)
 3. **Mock 남용 없는 통합 테스트** (현재 글)
 
 ---
@@ -42,14 +42,14 @@ Spring Boot의 opinionated한 테스트 설정은 `@SpringBootTest`로 전체 �
 ## 테스트 디렉토리 구조
 
 ```
-vp-core-api-app/
+up-core-api-app/
 ├── src/main/kotlin/...
 └── src/integrationTest/
-    ├── kotlin/sirius/vplat/
+    ├── kotlin/com/example/platform/
     │   ├── TestContainerConfig.kt        # 인프라 컨테이너
     │   ├── HealthCheckIntegrationTest.kt
-    │   ├── DeviceIntegrationTest.kt
-    │   ├── VehicleIntegrationTest.kt
+    │   ├── AccountIntegrationTest.kt
+    │   ├── UserIntegrationTest.kt
     │   ├── support/
     │   │   └── BaseTestContainerSpec.kt  # 테스트 베이스 클래스
     │   └── test/
@@ -57,8 +57,8 @@ vp-core-api-app/
     │       │   ├── TestConfig.kt         # 테스트용 Config
     │       │   └── DatabaseCleanup.kt    # DB 정리
     │       └── mock/
-    │           ├── TestVdpServiceAdapter.kt      # Mock VDP
-    │           └── TestVirtualVdpServiceAdapter.kt
+    │           ├── TestAuthServiceAdapter.kt     # Mock 인증 서비스
+    │           └── TestGuestAuthServiceAdapter.kt
     └── resources/
         ├── application.yml
         ├── application-datasource.yml
@@ -78,7 +78,7 @@ class TestContainerConfig : ApplicationContextInitializer<ConfigurableApplicatio
 
     companion object {
         private val postgres = PostgreSQLContainer("postgres:15-alpine")
-            .withDatabaseName("vplat_int")
+            .withDatabaseName("userplat_int")
             .withInitScript("test-schema.sql")
             .apply { start() }
 
@@ -111,7 +111,7 @@ class TestContainerConfig : ApplicationContextInitializer<ConfigurableApplicatio
 ```kotlin
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = [VehiclePlatformApiApplication::class, TestConfig::class]
+    classes = [UserPlatformApiApplication::class, TestConfig::class]
 )
 @ContextConfiguration(initializers = [TestContainerConfig::class])
 @ActiveProfiles("integration")
@@ -166,7 +166,7 @@ class DatabaseCleanup(
         if (tableNames.isEmpty()) extractTableNames()
         tableNames.forEach { table ->
             entityManager.createNativeQuery(
-                "TRUNCATE TABLE vplat.$table RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE userplat.$table RESTART IDENTITY CASCADE"
             ).executeUpdate()
         }
     }
@@ -183,7 +183,7 @@ class DatabaseCleanup(
 
 ```kotlin
 @Configuration
-@ComponentScan(basePackages = ["sirius.vplat.test.config", "sirius.vplat.test.mock"])
+@ComponentScan(basePackages = ["com.example.platform.test.config", "com.example.platform.test.mock"])
 class TestConfig {
 
     @Bean
@@ -210,7 +210,7 @@ class TestConfig {
 ```
 
 **역할:**
-- `sirius.vplat.test.mock` 패키지의 Mock 어댑터 스캔
+- `com.example.platform.test.mock` 패키지의 Mock 어댑터 스캔
 - TestContainer Kafka로 연결되는 KafkaTemplate 제공
 - `@Primary`로 프로덕션 빈 오버라이드
 
@@ -221,28 +221,28 @@ class TestConfig {
 외부 API를 호출하는 어댑터만 Mock으로 교체한다.
 
 ```kotlin
-@Component("vdpServiceAdapter")
+@Component("authServiceAdapter")
 @Primary
-class TestVdpServiceAdapter : VdpOut {
+class TestAuthServiceAdapter : AuthServiceOut {
 
-    private val deviceStore = mutableMapOf<String, VdpDeviceInfo>()
+    private val accountStore = mutableMapOf<String, AuthAccountInfo>()
 
-    override fun registerDevice(deviceSourceId: String, ...): VdpDeviceInfo {
-        deviceStore[deviceSourceId]?.let { return it }
+    override fun registerAccount(accountSourceId: String, ...): AuthAccountInfo {
+        accountStore[accountSourceId]?.let { return it }
 
-        val deviceInfo = VdpDeviceInfo(deviceId = UUID.randomUUID(), isActivated = true)
-        deviceStore[deviceSourceId] = deviceInfo
-        return deviceInfo
+        val accountInfo = AuthAccountInfo(accountId = UUID.randomUUID(), isActivated = true)
+        accountStore[accountSourceId] = accountInfo
+        return accountInfo
     }
 
-    override fun removeDevice(deviceId: UUID) {
-        deviceStore.entries.removeIf { it.value.deviceId == deviceId }
+    override fun removeAccount(accountId: UUID) {
+        accountStore.entries.removeIf { it.value.accountId == accountId }
     }
 }
 ```
 
 **핵심:**
-- `@Component("vdpServiceAdapter")`: 프로덕션과 같은 빈 이름
+- `@Component("authServiceAdapter")`: 프로덕션과 같은 빈 이름
 - `@Primary`: 테스트에서 이 빈이 우선
 - 인메모리 저장소로 외부 API 호출 없이 동작
 
@@ -251,10 +251,10 @@ class TestVdpServiceAdapter : VdpOut {
 ```kotlin
 // UseCaseConfig (프로덕션/테스트 공용)
 @Bean
-fun apiDeviceService(
-    @Qualifier("vdpServiceAdapter") vdpOut: VdpOut,  // 테스트: TestVdpServiceAdapter
+fun apiAccountService(
+    @Qualifier("authServiceAdapter") authOut: AuthServiceOut,  // 테스트: TestAuthServiceAdapter
     // ...
-): DeviceUseCase
+): AccountUseCase
 ```
 
 프로덕션의 Config가 그대로 동작한다. `@Primary`가 붙은 Mock만 교체된다.
@@ -264,27 +264,27 @@ fun apiDeviceService(
 ## 통합 테스트 예제
 
 ```kotlin
-class DeviceIntegrationTest(
+class AccountIntegrationTest(
     mockMvc: MockMvc,
     databaseCleanup: DatabaseCleanup,
     private val objectMapper: ObjectMapper,
-    private val deviceModelOut: DeviceModelOut,
-    private val vehicleOut: VehicleOut
+    private val accountTypeOut: AccountTypeOut,
+    private val userOut: UserOut
 ) : BaseTestContainerSpec(mockMvc, databaseCleanup) {
 
     init {
-        Given("단말 정보가 주어진 상태에서") {
-            val deviceModel = createTestDeviceModel()
-            val vehicle = createTestVehicle()
-            val request = CreateDeviceRequest(
-                vehicleId = vehicle.id.value,
-                deviceSourceId = "device-source-001",
-                deviceModelId = deviceModel.id.value
+        Given("계정 정보가 주어진 상태에서") {
+            val accountType = createTestAccountType()
+            val user = createTestUser()
+            val request = CreateAccountRequest(
+                userId = user.id.value,
+                accountSourceId = "account-source-001",
+                accountTypeId = accountType.id.value
             )
 
-            When("단말 생성 API를 호출하면") {
-                Then("단말이 정상적으로 생성되어야 한다") {
-                    mockMvc.post("/api/v1/devices") {
+            When("계정 생성 API를 호출하면") {
+                Then("계정이 정상적으로 생성되어야 한다") {
+                    mockMvc.post("/api/v1/accounts") {
                         contentType = MediaType.APPLICATION_JSON
                         content = objectMapper.writeValueAsString(request)
                     }.andExpect {
@@ -303,7 +303,7 @@ class DeviceIntegrationTest(
 - When: API 호출
 - Then: 응답 검증
 
-Port 인터페이스(`deviceModelOut`, `vehicleOut`)로 테스트 데이터를 직접 삽입한다. Repository가 아닌 Port를 쓰므로 도메인 로직을 거친다.
+Port 인터페이스(`accountTypeOut`, `userOut`)로 테스트 데이터를 직접 삽입한다. Repository가 아닌 Port를 쓰므로 도메인 로직을 거친다.
 
 ---
 
@@ -318,7 +318,7 @@ class PersistenceTestConfig : ApplicationContextInitializer<ConfigurableApplicat
 
     companion object {
         private val postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:15-alpine")
-            .withDatabaseName("vplat_int")
+            .withDatabaseName("userplat_int")
             .withUsername("test_user")
             .withPassword("test_password")
             .apply { start() }
@@ -345,20 +345,20 @@ class PersistenceTestConfig : ApplicationContextInitializer<ConfigurableApplicat
 ```kotlin
 @SpringBootTest(classes = [PersistenceAdapterConfig::class])
 @ContextConfiguration(initializers = [PersistenceTestConfig::class])
-class DevicePersistenceAdapterTest(
-    private val deviceOut: DeviceOut
+class AccountPersistenceAdapterTest(
+    private val accountOut: AccountOut
 ) : BehaviorSpec({
 
-    Given("디바이스가 저장된 상태에서") {
-        val device = Device(...)
-        val savedDevice = deviceOut.save(device)
+    Given("계정이 저장된 상태에서") {
+        val account = Account(...)
+        val savedAccount = accountOut.save(account)
 
         When("ID로 조회하면") {
-            val found = deviceOut.findById(savedDevice.id)
+            val found = accountOut.findById(savedAccount.id)
 
-            Then("동일한 디바이스가 반환된다") {
+            Then("동일한 계정이 반환된다") {
                 found shouldNotBe null
-                found?.id shouldBe savedDevice.id
+                found?.id shouldBe savedAccount.id
             }
         }
     }
@@ -382,16 +382,16 @@ class MockAdapterConfig {
 
     @Bean
     @Primary
-    fun mockVdpServiceAdapter(): VdpServiceAdapter = mockk<VdpServiceAdapter>().apply {
-        every { registerDevice(any(), any(), any(), any(), any()) } returns
-            VdpDeviceInfo(deviceId = UUID.randomUUID(), isActivated = true)
-        every { removeDevice(any()) } returns Unit
+    fun mockAuthServiceAdapter(): AuthServiceAdapter = mockk<AuthServiceAdapter>().apply {
+        every { registerAccount(any(), any(), any(), any(), any()) } returns
+            AuthAccountInfo(accountId = UUID.randomUUID(), isActivated = true)
+        every { removeAccount(any()) } returns Unit
     }
 
-    @Bean(name = ["vdpDeviceManagementClient"])
+    @Bean(name = ["authAccountManagementClient"])
     @Primary
-    fun mockVdpClient(): VdpDeviceManagementClient = mockk<VdpDeviceManagementClient>().apply {
-        every { activateDevice(any()) } returns DeviceDetailCommonFeignResponse(deviceId = UUID.randomUUID())
+    fun mockAuthClient(): AuthAccountManagementClient = mockk<AuthAccountManagementClient>().apply {
+        every { activateAccount(any()) } returns AccountDetailCommonFeignResponse(accountId = UUID.randomUUID())
     }
 }
 ```

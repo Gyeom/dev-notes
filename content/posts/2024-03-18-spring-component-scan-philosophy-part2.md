@@ -11,9 +11,9 @@ series_order: 2
 
 ## 시리즈
 
-1. [@ComponentScan의 함정](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part1/)
+1. [@ComponentScan의 함정](/dev-notes/posts/2024-03-15-spring-component-scan-philosophy-part1/)
 2. **멀티앱, 하나의 코드베이스** (현재 글)
-3. [Mock 남용 없는 통합 테스트](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+3. [Mock 남용 없는 통합 테스트](/dev-notes/posts/2024-03-22-spring-component-scan-philosophy-part3/)
 
 ---
 
@@ -56,14 +56,14 @@ spring:
 하나의 코드베이스에서 여러 애플리케이션을 실행한다.
 
 ```
-vplat-server/
-├── vp-core-api-app/        # API 서버 (HTTP 요청 처리)
-├── vp-core-consumer-app/   # Kafka 컨슈머 (메시지 수신)
-├── vp-core-outbox-app/     # 아웃박스 처리 (이벤트 발행)
-├── vp-adapter/
+user-platform/
+├── up-core-api-app/        # API 서버 (HTTP 요청 처리)
+├── up-core-consumer-app/   # Kafka 컨슈머 (메시지 수신)
+├── up-core-outbox-app/     # 아웃박스 처리 (이벤트 발행)
+├── up-adapter/
 │   ├── inbound/
 │   │   ├── web/            # HTTP 어댑터
-│   │   ├── vehicle-consumer/  # Kafka 리스너
+│   │   ├── event-consumer/ # Kafka 리스너
 │   │   └── outbox-scheduler/  # 스케줄러
 │   └── outbound/
 │       ├── persistence/    # DB 접근
@@ -71,8 +71,8 @@ vplat-server/
 │       ├── producer/       # Kafka 발행
 │       ├── cache/          # Redis
 │       └── slack/          # Slack 알림
-├── vp-application/         # UseCase 구현
-└── vp-domain/              # 도메인 모델
+├── up-application/         # UseCase 구현
+└── up-domain/              # 도메인 모델
 ```
 
 같은 도메인 로직을 공유하지만, 진입점이 다르다.
@@ -96,7 +96,7 @@ vplat-server/
     ApplicationSupportConfig::class,   // AOP, 메트릭
     MetricsConfig::class               // Prometheus
 )
-class VehiclePlatformApiApplication
+class UserPlatformApiApplication
 ```
 
 ### Consumer App
@@ -104,7 +104,7 @@ class VehiclePlatformApiApplication
 ```kotlin
 @EnableAutoConfiguration
 @Import(
-    VehicleConsumerAdapterConfig::class,  // Kafka 리스너
+    EventConsumerAdapterConfig::class,    // Kafka 리스너
     PersistenceAdapterConfig::class,      // DB
     ClientAdapterConfig::class,           // 외부 API
     SlackAdapterConfig::class,            // Slack 알림
@@ -113,7 +113,7 @@ class VehiclePlatformApiApplication
     KafkaConsumerConfig::class,           // Kafka Consumer 설정
     ApplicationSupportConfig::class       // AOP
 )
-class VehiclePlatformConsumerApplication
+class UserPlatformConsumerApplication
 ```
 
 ### Outbox App
@@ -135,7 +135,7 @@ class OutboxApplication
 | Config | API | Consumer | Outbox |
 |--------|-----|----------|--------|
 | WebAdapterConfig | ✓ | | |
-| VehicleConsumerAdapterConfig | | ✓ | |
+| EventConsumerAdapterConfig | | ✓ | |
 | OutboxSchedulerAdapterConfig | | | ✓ |
 | PersistenceAdapterConfig | ✓ | ✓ | ✓ |
 | ClientAdapterConfig | ✓ | ✓ | |
@@ -157,10 +157,10 @@ Application 클래스만 보면 각 앱이 어떤 어댑터를 사용하는지 �
 ```yaml
 spring:
   application:
-    name: vp-core-api-app
+    name: up-core-api-app
   profiles:
     active: api
-    include: datasource, auth, logging, kafka, web-client, redis, client, vdp, http-client
+    include: datasource, auth, logging, kafka, web-client, redis, client, auth-service, http-client
 ```
 
 9개의 설정 파일을 포함한다.
@@ -170,20 +170,20 @@ spring:
 ```yaml
 spring:
   application:
-    name: vp-core-consumer-app
+    name: up-core-consumer-app
   profiles:
     active: consumer
     include: datasource, auth, logging, kafka, web-client, redis, client
 ```
 
-7개의 설정 파일을 포함한다. `vdp`, `http-client`가 빠졌다.
+7개의 설정 파일을 포함한다. `auth-service`, `http-client`가 빠졌다.
 
 ### Outbox App의 application.yml
 
 ```yaml
 spring:
   application:
-    name: vp-core-outbox-app
+    name: up-core-outbox-app
   profiles:
     active: outbox
     include: datasource, auth, logging, kafka
@@ -202,7 +202,7 @@ spring:
 | web-client | ✓ | ✓ | | WebClient 설정 |
 | redis | ✓ | ✓ | | Redis 캐시 |
 | client | ✓ | ✓ | | 외부 API URL |
-| vdp | ✓ | | | VDP 시스템 설정 |
+| auth-service | ✓ | | | 인증 시스템 설정 |
 | http-client | ✓ | | | HTTP 타임아웃 |
 
 ---
@@ -213,12 +213,12 @@ spring:
 
 설정 파일은 두 곳에 위치한다.
 
-**앱 모듈 (vp-core-*-app/src/main/resources/)**
+**앱 모듈 (up-core-*-app/src/main/resources/)**
 - `application.yml` - 앱별 기본 설정
 - `application-datasource.yml` - DB 연결 (풀 사이즈가 앱마다 다름)
 - `application-kafka.yml` - Kafka 설정 (Producer/Consumer 차이)
 
-**어댑터 모듈 (vp-adapter/*/src/main/resources/)**
+**어댑터 모듈 (up-adapter/*/src/main/resources/)**
 - `application-client.yml` - 외부 API URL (모든 앱이 동일)
 - `application-logging.yml` - 로깅 설정 (공통)
 
@@ -261,7 +261,7 @@ spring:
   kafka:
     platform:
       consumer:
-        group-id: vplat-server
+        group-id: user-platform
         auto-offset-reset: earliest
         concurrency: 3
         enable-auto-commit: false
@@ -279,7 +279,7 @@ Spring Boot의 [Multi-document Files](https://docs.spring.io/spring-boot/referen
 # Default (local)
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/vplat_int
+    url: jdbc:postgresql://localhost:5432/userplat_int
   jpa:
     hibernate:
       ddl-auto: create  # 로컬: 스키마 자동 생성
@@ -289,7 +289,7 @@ spring.config.activate.on-profile: int
 
 spring:
   datasource:
-    url: jdbc:postgresql://common-int-main.rds.amazonaws.com/vplat_int
+    url: jdbc:postgresql://common-int-main.rds.amazonaws.com/userplat_int
     password: ${POSTGRESQL_PASSWORD}
   jpa:
     hibernate:
@@ -345,7 +345,7 @@ spring:
 spring:
   kafka:
     consumer:
-      group-id: vplat-server
+      group-id: user-platform
       enable-auto-commit: false
 ```
 
@@ -419,4 +419,4 @@ Spring Boot의 opinionated한 접근이 "하나의 앱"을 가정한다면, 우�
 
 ---
 
-**다음 글:** [Mock 남용 없는 통합 테스트](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+**다음 글:** [Mock 남용 없는 통합 테스트](/dev-notes/posts/2024-03-22-spring-component-scan-philosophy-part3/)

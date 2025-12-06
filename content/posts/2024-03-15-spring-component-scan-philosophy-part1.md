@@ -12,8 +12,8 @@ series_order: 1
 ## 시리즈
 
 1. **@ComponentScan의 함정** (현재 글)
-2. [멀티앱, 하나의 코드베이스](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
-3. [Mock 남용 없는 통합 테스트](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part3/)
+2. [멀티앱, 하나의 코드베이스](/dev-notes/posts/2024-03-18-spring-component-scan-philosophy-part2/)
+3. [Mock 남용 없는 통합 테스트](/dev-notes/posts/2024-03-22-spring-component-scan-philosophy-part3/)
 
 ---
 
@@ -147,11 +147,11 @@ project/
     ProducerAdapterConfig::class,
     UseCaseConfig::class,
 )
-class VehiclePlatformApiApplication
+class UserPlatformApiApplication
 
 fun main(args: Array<String>) {
     TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
-    runApplication<VehiclePlatformApiApplication>(*args)
+    runApplication<UserPlatformApiApplication>(*args)
 }
 ```
 
@@ -177,20 +177,20 @@ HTTP 요청을 처리하는 컴포넌트를 등록한다.
 ```kotlin
 @Configuration
 @ComponentScan(
-    basePackages = ["sirius.vplat.adapter.inbound.web"]
+    basePackages = ["com.example.platform.adapter.inbound.web"]
 )
 @ConfigurationPropertiesScan(
-    basePackages = ["sirius.vplat.adapter.inbound.web.config"]
+    basePackages = ["com.example.platform.adapter.inbound.web.config"]
 )
 class WebAdapterConfig
 ```
 
-이 Config가 Import되면 `sirius.vplat.adapter.inbound.web` 패키지의 컴포넌트만 스캔한다.
+이 Config가 Import되면 `com.example.platform.adapter.inbound.web` 패키지의 컴포넌트만 스캔한다.
 
 **등록되는 컴포넌트:**
-- `@RestController`: DeviceController, VehicleController, MetadataController
-- `@Component`: CorrelationIdFilter, ServiceAuthenticationFilter, ApiAuditFilter
-- `@ControllerAdvice`: DefaultExceptionHandler
+- `@RestController`: UserController, AccountController, ProfileController
+- `@Component`: CorrelationIdFilter, AuthenticationFilter, AuditFilter
+- `@ControllerAdvice`: GlobalExceptionHandler
 
 ### Outbound Adapter: PersistenceAdapterConfig
 
@@ -199,13 +199,13 @@ class WebAdapterConfig
 ```kotlin
 @Configuration
 @ComponentScan(
-    basePackages = ["sirius.vplat.adapter.outbound.persistence"]
+    basePackages = ["com.example.platform.adapter.outbound.persistence"]
 )
 @EnableJpaRepositories(
-    basePackages = ["sirius.vplat.adapter.outbound.persistence"]
+    basePackages = ["com.example.platform.adapter.outbound.persistence"]
 )
 @EntityScan(
-    basePackages = ["sirius.vplat.adapter.outbound.persistence"]
+    basePackages = ["com.example.platform.adapter.outbound.persistence"]
 )
 class PersistenceAdapterConfig
 ```
@@ -213,7 +213,7 @@ class PersistenceAdapterConfig
 **등록되는 컴포넌트:**
 - `@Repository`: Spring Data JPA 인터페이스
 - `@Entity`: JPA 엔티티
-- `@Adapter`: Port 구현체 (VehicleOutAdapter, DevicePersistenceAdapter)
+- `@Adapter`: Port 구현체 (UserPersistenceAdapter, AccountPersistenceAdapter)
 
 ### Outbound Adapter: ClientAdapterConfig
 
@@ -222,10 +222,10 @@ class PersistenceAdapterConfig
 ```kotlin
 @Configuration
 @EnableFeignClients(
-    basePackages = ["sirius.vplat.adapter.outbound.client"]
+    basePackages = ["com.example.platform.adapter.outbound.client"]
 )
 @ComponentScan(
-    basePackages = ["sirius.vplat.adapter.outbound.client"]
+    basePackages = ["com.example.platform.adapter.outbound.client"]
 )
 class ClientAdapterConfig {
 
@@ -254,11 +254,11 @@ Config 클래스에 Feign 공통 설정(타임아웃, 재시도)도 함께 정�
 
 ```kotlin
 @Configuration
-@ComponentScan(basePackages = ["sirius.vplat.adapter.outbound.producer"])
+@ComponentScan(basePackages = ["com.example.platform.adapter.outbound.producer"])
 class ProducerAdapterConfig
 
 @Configuration
-@ComponentScan(basePackages = ["sirius.vplat.adapter.outbound.cache"])
+@ComponentScan(basePackages = ["com.example.platform.adapter.outbound.cache"])
 class CacheAdapterConfig {
     @Bean
     fun redisTemplate(connectionFactory: RedisConnectionFactory): RedisTemplate<String, Any> {
@@ -279,29 +279,24 @@ UseCase 클래스는 `@Service` 어노테이션을 붙이지 않는다. Config�
 class UseCaseConfig {
 
     @Bean
-    fun apiDeviceService(
-        deviceOut: DeviceOut,
-        deviceModelOut: DeviceModelOut,
-        @Qualifier("vdpServiceAdapter") vdpOut: VdpOut,
-        vehicleOut: VehicleOut,
-        eventOut: EventOut,
-        vehicleBrandOut: VehicleBrandOut,
-        vehicleModelOut: VehicleModelOut,
-        vehicleCategoryOut: VehicleCategoryOut,
-        vehicleClassOut: VehicleClassOut
-    ): DeviceUseCase = DeviceService(
-        deviceOut, deviceModelOut, vdpOut, vehicleOut, eventOut,
-        vehicleBrandOut, vehicleModelOut, vehicleCategoryOut, vehicleClassOut
+    fun accountService(
+        accountOut: AccountOut,
+        accountTypeOut: AccountTypeOut,
+        @Qualifier("authServiceAdapter") authOut: AuthServiceOut,
+        userOut: UserOut,
+        eventOut: EventOut
+    ): AccountUseCase = AccountService(
+        accountOut, accountTypeOut, authOut, userOut, eventOut
     )
 
     @Bean
-    fun vehicleService(
-        vehicleContainerOut: VehicleContainerOut,
-        vehicleOut: VehicleOut,
-        deviceOut: DeviceOut,
+    fun userService(
+        userGroupOut: UserGroupOut,
+        userOut: UserOut,
+        accountOut: AccountOut,
         eventOut: EventOut
-    ): VehicleUseCase = VehicleService(
-        vehicleContainerOut, vehicleOut, deviceOut, eventOut
+    ): UserUseCase = UserService(
+        userGroupOut, userOut, accountOut, eventOut
     )
 }
 ```
@@ -310,20 +305,20 @@ class UseCaseConfig {
 
 **1. 의존성이 명시적으로 드러난다**
 
-`DeviceService`가 9개의 Port를 의존한다는 사실이 코드에서 바로 보인다.
+`AccountService`가 5개의 Port를 의존한다는 사실이 코드에서 바로 보인다.
 
 **2. 같은 인터페이스의 여러 구현체를 다룰 수 있다**
 
 ```kotlin
 @Bean
-fun apiDeviceService(
-    @Qualifier("vdpServiceAdapter") vdpOut: VdpOut,  // 실제 VDP API
-): DeviceUseCase = DeviceService(...)
+fun accountService(
+    @Qualifier("authServiceAdapter") authOut: AuthServiceOut,  // 실제 인증 API
+): AccountUseCase = AccountService(...)
 
-@Bean(name = ["virtualVehicleEventUseCase"])
-fun virtualVehicleEventService(
-    @Qualifier("virtualVdpServiceAdapter") vdpOut: VdpOut,  // Virtual VDP
-): VehicleEventUseCase = VirtualVehicleEventService(...)
+@Bean(name = ["guestAccountUseCase"])
+fun guestAccountService(
+    @Qualifier("guestAuthServiceAdapter") authOut: AuthServiceOut,  // 게스트용
+): AccountUseCase = GuestAccountService(...)
 ```
 
 `@Qualifier`로 어떤 구현체를 주입할지 명시한다.
@@ -351,4 +346,4 @@ API 앱과 Consumer 앱이 같은 UseCase 클래스를 공유하지만, 필요�
 
 ---
 
-**다음 글:** [멀티앱, 하나의 코드베이스](/dev-notes/posts/2024-11-30-spring-component-scan-philosophy-part2/)
+**다음 글:** [멀티앱, 하나의 코드베이스](/dev-notes/posts/2024-03-18-spring-component-scan-philosophy-part2/)
