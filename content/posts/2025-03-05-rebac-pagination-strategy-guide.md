@@ -591,126 +591,6 @@ flowchart LR
 
 이 구조는 **중규모(1K-100K)**에서 잘 동작하며, 규모가 커지면 Materialize 패턴으로 전환할 수 있는 기반을 갖추고 있다.
 
-## DB 쿼리 최적화: Subquery vs Direct ID List
-
-`WHERE IN (id1, id2, ...)` 쿼리가 왜 비효율적인지, 그리고 어떻게 개선할 수 있는지 살펴본다.
-
-### PostgreSQL IN 절의 두 가지 형태
-
-**리터럴 리스트 (Direct ID List)**
-
-```sql
-SELECT * FROM documents WHERE id IN ('d1', 'd2', 'd3', ..., 'd10000');
-```
-
-내부적으로 OR 조건으로 변환된다.
-
-```sql
-WHERE id = 'd1' OR id = 'd2' OR id = 'd3' ...
-```
-
-**Subquery Expression**
-
-```sql
-SELECT * FROM documents
-WHERE id IN (SELECT document_id FROM folder_documents WHERE folder_id IN ('f1', 'f2'));
-```
-
-Semi-Join으로 최적화된다. Hash Semi Join, Nested Loop Semi Join 등 DB가 최적 전략을 선택한다.
-
-### 실행 계획 비교
-
-700개 ID로 테스트한 결과다.
-
-**Direct ID List**
-
-```
-Seq Scan on items  (cost=0.00..1364.00 rows=700 width=32)
-  Filter: (id = ANY ('{500,501,502,...}'::integer[]))
-  actual time=1074.035ms
-```
-
-Sequential Scan 발생. 인덱스 미사용.
-
-**Subquery 방식**
-
-```
-Hash Semi Join  (cost=18.00..51.08 rows=700 width=32)
-  Hash Cond: (items.id = "*VALUES*".column1)
-  actual time=239.035ms
-```
-
-Hash Semi Join 사용. **4.5배 빠르다.**
-
-### 성능 차이 원인
-
-| 방식 | 처리 방법 | 복잡도 |
-|------|-----------|--------|
-| Direct ID List | 각 값마다 개별 비교 (OR) | O(n×m) |
-| Subquery | Hash 테이블 생성 후 조인 | O(n+m) |
-
-### 규모별 권장 방식
-
-| ID 개수 | 권장 방식 | 이유 |
-|---------|-----------|------|
-| < 128개 | 어느 방식이든 OK | 성능 차이 미미 |
-| 128 ~ 1,000개 | Subquery | Hash Join 이점 |
-| 1,000 ~ 10,000개 | **반드시 Subquery** | 20배 이상 성능 차이 |
-| > 10,000개 | Subquery + Batch | 쿼리 계획 시간 고려 |
-
-### QueryDSL에서의 적용
-
-**권장: Subquery 방식**
-
-```kotlin
-val documentIdsInFolders = JPAExpressions
-    .select(folderDocument.documentId)
-    .from(folderDocument)
-    .where(folderDocument.folderId.`in`(accessibleFolderIds))
-
-predicate.and(QDocumentEntity.documentEntity.id.`in`(documentIdsInFolders))
-```
-
-DB 엔진이 최적의 실행 계획을 선택한다. 네트워크 전송량도 최소화된다.
-
-**비권장: Direct ID List**
-
-```kotlin
-val documentIds = folderDocumentRepository
-    .findAllByFolderIdIn(accessibleFolderIds)
-    .map { it.documentId }
-
-predicate.and(QDocumentEntity.documentEntity.id.`in`(documentIds))
-```
-
-Application에서 중간 결과를 메모리에 로드하고, 대량의 ID를 SQL로 전송한다.
-
-### ReBAC에서의 적용
-
-OpenFGA `listObjects`로 ID 목록을 가져온 후 DB를 조회하는 "전략 1"의 경우를 보자.
-
-1. **소규모 (< 1,000개)**: Direct ID List도 괜찮다
-2. **중규모 이상**: 폴더-문서 매핑 테이블을 만들고 Subquery로 처리
-
-```kotlin
-// 폴더 ID만 전달하고, DB에서 Subquery로 문서 조회
-fun findDocumentsByFolders(folderIds: List<String>, pageable: Pageable): Page<Document> {
-    val documentIdsSubquery = JPAExpressions
-        .select(folderDocument.documentId)
-        .from(folderDocument)
-        .where(folderDocument.folderId.`in`(folderIds))
-
-    return jpaQueryFactory
-        .selectFrom(document)
-        .where(document.id.`in`(documentIdsSubquery))
-        .offset(pageable.offset)
-        .limit(pageable.pageSize.toLong())
-        .fetch()
-}
-```
-
-이 방식은 "Materialize 패턴"의 경량 버전이다. 권한 변경 시 `folder_document` 테이블만 동기화하면 된다.
-
 ## 정리
 
 ReBAC 환경에서 페이징을 구현하는 "정답"은 없다. 서비스 규모, 권한 구조 복잡도, 기존 아키텍처에 따라 전략을 선택해야 한다.
@@ -723,15 +603,13 @@ ReBAC 환경에서 페이징을 구현하는 "정답"은 없다. 서비스 규�
 
 ### 참고 자료
 
+**관련 포스트**
+- [ReBAC Group 패턴 실전 적용기](/dev-notes/posts/2025-02-10-rebac-group-pattern-real-world/) - Group 패턴 구현과 DB 쿼리 최적화
+- [OpenFGA/ReBAC의 실무 한계와 극복 전략](/dev-notes/posts/2025-01-15-openfga-rebac-limitations/) - ListObjects 한계와 대안
+
 **ReBAC/Authorization**
 - [OpenFGA - Search with Permissions](https://openfga.dev/docs/interacting/search-with-permissions)
 - [SpiceDB - Protecting a List Endpoint](https://authzed.com/docs/spicedb/modeling/protecting-a-list-endpoint)
 - [AuthZed Materialize](https://authzed.com/docs/authzed/concepts/authzed-materialize)
 - [Flowtide OpenFGA Connector](https://koralium.github.io/flowtide/docs/connectors/openfga)
 - [Google Zanzibar Paper](https://authzed.com/zanzibar)
-
-**PostgreSQL Query Optimization**
-- [Subqueries and Performance in PostgreSQL - CYBERTEC](https://www.cybertec-postgresql.com/en/subqueries-and-performance-in-postgresql/)
-- [PostgreSQL IN Operator Performance - Stack Overflow](https://stackoverflow.com/questions/40443409/postgresql-in-operator-performance-list-vs-subquery)
-- [SQL Optimizations in PostgreSQL: IN vs EXISTS vs ANY/ALL vs JOIN - Percona](https://www.percona.com/blog/sql-optimizations-in-postgresql-in-vs-exists-vs-any-all-vs-join/)
-- [100x faster Postgres performance by changing 1 line - Datadog](https://www.datadoghq.com/blog/100x-faster-postgres-performance-by-changing-1-line/)

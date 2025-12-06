@@ -754,6 +754,138 @@ fun getVehicles(filter: VehicleFilter, pageable: Pageable): Page<Vehicle> {
 
 ---
 
+## DB 쿼리 최적화: Subquery vs Direct ID List
+
+`WHERE IN (id1, id2, ...)` 쿼리가 왜 비효율적인지 살펴본다.
+
+### PostgreSQL IN 절의 두 가지 형태
+
+**리터럴 리스트 (Direct ID List)**
+
+```sql
+SELECT * FROM vehicles WHERE id IN ('v1', 'v2', 'v3', ..., 'v10000');
+```
+
+내부적으로 OR 조건으로 변환된다.
+
+```sql
+WHERE id = 'v1' OR id = 'v2' OR id = 'v3' ...
+```
+
+**Subquery Expression**
+
+```sql
+SELECT * FROM vehicles
+WHERE id IN (SELECT vehicle_id FROM group_memberships WHERE group_id IN ('g1', 'g2'));
+```
+
+Semi-Join으로 최적화된다. Hash Semi Join, Nested Loop Semi Join 등 DB가 최적 전략을 선택한다.
+
+### 실행 계획 비교
+
+700개 ID로 테스트한 결과다.
+
+**Direct ID List**
+
+```
+Seq Scan on vehicles  (cost=0.00..1364.00 rows=700 width=32)
+  Filter: (id = ANY ('{v1,v2,v3,...}'::text[]))
+  actual time=1074.035ms
+```
+
+Sequential Scan 발생. 인덱스 미사용.
+
+**Subquery 방식**
+
+```
+Hash Semi Join  (cost=18.00..51.08 rows=700 width=32)
+  Hash Cond: (vehicles.id = group_memberships.vehicle_id)
+  actual time=239.035ms
+```
+
+Hash Semi Join 사용. **4.5배 빠르다.**
+
+### 성능 차이 원인
+
+| 방식 | 처리 방법 | 복잡도 |
+|------|-----------|--------|
+| Direct ID List | 각 값마다 개별 비교 (OR) | O(n×m) |
+| Subquery | Hash 테이블 생성 후 조인 | O(n+m) |
+
+### 규모별 권장 방식
+
+| ID 개수 | 권장 방식 | 이유 |
+|---------|-----------|------|
+| < 128개 | 어느 방식이든 OK | 성능 차이 미미 |
+| 128 ~ 1,000개 | Subquery | Hash Join 이점 |
+| 1,000 ~ 10,000개 | **반드시 Subquery** | 20배 이상 성능 차이 |
+| > 10,000개 | Subquery + Batch | 쿼리 계획 시간 고려 |
+
+### QueryDSL에서의 적용
+
+**권장: Subquery 방식**
+
+```kotlin
+val vehicleIdsInGroups = JPAExpressions
+    .select(groupMembership.vehicleId)
+    .from(groupMembership)
+    .where(groupMembership.groupId.`in`(accessibleGroupIds))
+
+predicate.and(QVehicle.vehicle.id.`in`(vehicleIdsInGroups))
+```
+
+DB 엔진이 최적의 실행 계획을 선택한다. 네트워크 전송량도 최소화된다.
+
+**비권장: Direct ID List**
+
+```kotlin
+val vehicleIds = groupMembershipRepository
+    .findAllByGroupIdIn(accessibleGroupIds)
+    .map { it.vehicleId }
+
+predicate.and(QVehicle.vehicle.id.`in`(vehicleIds))
+```
+
+Application에서 중간 결과를 메모리에 로드하고, 대량의 ID를 SQL로 전송한다.
+
+### Dual Source 패턴과의 연결
+
+앞서 소개한 `tbl_relation_tuples` 테이블을 활용하면 Subquery로 처리할 수 있다.
+
+```kotlin
+fun findAccessibleVehicles(
+    userId: UUID,
+    companyCode: String,
+    pageable: Pageable
+): Page<Vehicle> {
+    // Subquery: 권한 테이블에서 접근 가능한 vehicle ID 조회
+    val accessibleVehicleIds = JPAExpressions
+        .select(relationTuple.resourceId)
+        .from(relationTuple)
+        .where(
+            relationTuple.resourceType.eq("vehicle")
+                .and(
+                    relationTuple.subjectType.eq("user")
+                        .and(relationTuple.subjectId.eq(userId.toString()))
+                ).or(
+                    relationTuple.subjectType.eq("company")
+                        .and(relationTuple.subjectId.eq(companyCode))
+                )
+        )
+
+    return jpaQueryFactory
+        .selectFrom(vehicle)
+        .where(vehicle.id.`in`(accessibleVehicleIds))
+        .offset(pageable.offset)
+        .limit(pageable.pageSize.toLong())
+        .fetch()
+}
+```
+
+이 방식은 OpenFGA 호출 없이 DB JOIN만으로 권한 필터링을 처리한다.
+
+---
+
 ## 정리
 
 Group 패턴은 **벌크 권한 관리의 핵심**이다.
@@ -779,6 +911,16 @@ OpenFGA의 `parent` 관계와 `from parent` 상속을 활용하되, **목록 조
 
 ## 참고 자료
 
+**관련 포스트**
+- [ReBAC 환경에서 페이징 구현 전략 가이드](/dev-notes/posts/2025-03-05-rebac-pagination-strategy-guide/) - 5가지 페이징 전략 비교
+- [OpenFGA/ReBAC의 실무 한계와 극복 전략](/dev-notes/posts/2025-01-15-openfga-rebac-limitations/) - ListObjects 한계와 대안
+
+**OpenFGA**
 - [OpenFGA 공식 문서 - Modeling Guides](https://openfga.dev/docs/modeling)
 - [OpenFGA Parent-Child Pattern](https://openfga.dev/docs/modeling/parent-child)
 - [Google Zanzibar Paper](https://research.google/pubs/pub48190/)
+
+**PostgreSQL Query Optimization**
+- [Subqueries and Performance in PostgreSQL - CYBERTEC](https://www.cybertec-postgresql.com/en/subqueries-and-performance-in-postgresql/)
+- [PostgreSQL IN Operator Performance - Stack Overflow](https://stackoverflow.com/questions/40443409/postgresql-in-operator-performance-list-vs-subquery)
+- [100x faster Postgres performance by changing 1 line - Datadog](https://www.datadoghq.com/blog/100x-faster-postgres-performance-by-changing-1-line/)
