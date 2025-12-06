@@ -1,7 +1,7 @@
 ---
 title: "AI 자동화 블로그 만들기 (2) - Claude Code로 이슈 기반 자동 포스팅"
 date: 2025-10-20
-draft: false
+draft: true
 tags: ["GitHub Actions", "Claude Code", "자동화", "CI/CD", "AI"]
 categories: ["개발환경"]
 series: ["AI 자동화 블로그"]

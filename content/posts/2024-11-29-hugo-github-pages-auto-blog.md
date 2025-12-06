@@ -1,7 +1,7 @@
 ---
 title: "AI 자동화 블로그 만들기 (1) - Hugo + GitHub Pages 구축"
 date: 2024-11-29
-draft: false
+draft: true
 tags: ["Hugo", "GitHub Pages", "GitHub Actions", "자동화", "블로그", "Mermaid"]
 categories: ["개발환경"]
 series: ["AI 자동화 블로그"]

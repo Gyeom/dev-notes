@@ -1,7 +1,7 @@
 ---
 title: "Casbin vs OpenFGA: ReBAC 구현체 심층 비교"
 date: 2025-04-15
-draft: false
+draft: true
 tags: ["Casbin", "OpenFGA", "ReBAC", "Authorization", "Zanzibar"]
 summary: "임베디드 라이브러리 Casbin과 Zanzibar 기반 서비스 OpenFGA를 아키텍처, 모델링, 확장성, 일관성 측면에서 비교하고 선택 기준을 제시한다."
 ---
