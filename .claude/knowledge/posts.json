@@ -1,8 +1,181 @@
 {
   "version": "1.0",
-  "generated_at": "2025-11-30 00:31",
-  "post_count": 5,
+  "generated_at": "2025-12-05 19:57",
+  "post_count": 20,
   "posts": [
+    {
+      "filename": "2025-12-05-testcontainers-integration-test-strategy.md",
+      "title": "Testcontainers 기반 통합 테스트 전략",
+      "date": "2025-12-05",
+      "tags": [
+        "Spring Boot",
+        "Testing",
+        "Testcontainers",
+        "Integration Test",
+        "Kotest",
+        "Hexagonal Architecture"
+      ],
+      "series": "",
+      "summary": "Source Set 분리, Testcontainers, Mock 어댑터 패턴, CI 전략까지. 프로덕션과 동일한 테스트 환경을 구축하는 방법",
+      "keywords": [
+        "들어가며",
+        "흔히 하는 실수들",
+        "Source Set 분리",
+        "Testcontainers 기반 인프라",
+        "테스트 격리 전략"
+      ]
+    },
+    {
+      "filename": "2025-12-04-postgresql-explain-analyze-complete-guide.md",
+      "title": "PostgreSQL EXPLAIN ANALYZE 완벽 가이드: 실행 계획 읽는 법",
+      "date": "2025-12-04",
+      "tags": [
+        "PostgreSQL",
+        "Query Optimization",
+        "Performance",
+        "Database",
+        "EXPLAIN"
+      ],
+      "series": "",
+      "summary": "PostgreSQL 쿼리 분석의 핵심인 EXPLAIN ANALYZE 출력을 완벽히 이해한다. Scan 타입, Join 알고리즘, Buffer 통계, 비용 계산, 통계 시스템까지 실행 계획의 모든 것을 다룬다.",
+      "keywords": [
+        "EXPLAIN vs EXPLAIN ANALYZE",
+        "실행 계획 기본 구조",
+        "Scan Types (스캔 방식)",
+        "Join Algorithms (조인 알고리즘)",
+        "Buffer 통계"
+      ]
+    },
+    {
+      "filename": "2025-12-04-mongodb-vehicle-telemetry-pipeline.md",
+      "title": "차량 텔레매틱스 데이터 파이프라인에서 MongoDB 활용과 한계",
+      "date": "2025-12-04",
+      "tags": [
+        "MongoDB",
+        "Time-Series",
+        "Kafka",
+        "Vehicle",
+        "IoT",
+        "ClickHouse",
+        "TimescaleDB"
+      ],
+      "series": "",
+      "summary": "차량 엣지에서 올라오는 텔레매틱스 데이터를 MongoDB로 처리할 때의 활용법, 성능 한계, 그리고 대안 아키텍처를 분석한다.",
+      "keywords": [
+        "차량 텔레매틱스 데이터 특성",
+        "MongoDB Time Series Collections",
+        "MongoDB의 한계점",
+        "전용 시계열 DB 비교",
+        "아키텍처 패턴"
+      ]
+    },
+    {
+      "filename": "2025-12-03-rebac-pagination-strategy-guide.md",
+      "title": "ReBAC 환경에서 페이징 구현 전략 가이드",
+      "date": "2025-12-03",
+      "tags": [
+        "OpenFGA",
+        "ReBAC",
+        "Authorization",
+        "Pagination",
+        "CQRS",
+        "PostgreSQL",
+        "Query Optimization"
+      ],
+      "series": "",
+      "summary": "OpenFGA/SpiceDB 기반 ReBAC 시스템에서 대규모 데이터셋의 페이징을 구현하는 5가지 전략과 실제 아키텍처 패턴을 상세히 다룬다.",
+      "keywords": [
+        "왜 페이징이 어려운가?",
+        "전략 1: ListObjects then Search",
+        "전략 2: Search then Check (BatchCheck)",
+        "전략 3: Pragmatic Filtering",
+        "전략 4: Materialize 패턴"
+      ]
+    },
+    {
+      "filename": "2025-12-03-rebac-group-pattern-real-world.md",
+      "title": "ReBAC Group 패턴 실전 적용기: OpenFGA + Spring Boot",
+      "date": "2025-12-03",
+      "tags": [
+        "OpenFGA",
+        "ReBAC",
+        "Authorization",
+        "Spring-Boot",
+        "Kotlin",
+        "Kafka"
+      ],
+      "series": "",
+      "summary": "OpenFGA 기반 ReBAC에서 Group 패턴을 적용해 대규모 리소스 권한 관리를 효율화한 실제 사례를 분석한다. Dual Source 패턴으로 ListObjects 한계도 극복했다.",
+      "keywords": [
+        "배경",
+        "아키텍처 개요",
+        "OpenFGA 모델 설계",
+        "권한 상속 흐름",
+        "튜플 수 비교"
+      ]
+    },
+    {
+      "filename": "2025-12-03-casbin-vs-openfga-comparison.md",
+      "title": "Casbin vs OpenFGA: ReBAC 구현체 심층 비교",
+      "date": "2025-12-03",
+      "tags": [
+        "Casbin",
+        "OpenFGA",
+        "ReBAC",
+        "Authorization",
+        "Zanzibar"
+      ],
+      "series": "",
+      "summary": "임베디드 라이브러리 Casbin과 Zanzibar 기반 서비스 OpenFGA를 아키텍처, 모델링, 확장성, 일관성 측면에서 비교하고 선택 기준을 제시한다.",
+      "keywords": [
+        "핵심 차이: 라이브러리 vs 서비스",
+        "아키텍처 비교",
+        "모델링 방식 비교",
+        "ReBAC 구현 방식 비교",
+        "확장성 비교"
+      ]
+    },
+    {
+      "filename": "2025-12-03-casbin-k8s-multi-instance-sync.md",
+      "title": "Casbin K8s 멀티 인스턴스 정책 동기화 전략",
+      "date": "2025-12-03",
+      "tags": [
+        "Casbin",
+        "Kubernetes",
+        "Spring-Boot",
+        "Authorization",
+        "Redis"
+      ],
+      "series": "",
+      "summary": "K8s 환경에서 Casbin 인스턴스 간 정책 동기화 전략(Redis/PostgreSQL Watcher)과 대규모 리소스 목록 페이징 전략을 정리한다.",
+      "keywords": [
+        "문제 상황",
+        "전략 비교",
+        "전략 1: Redis Watcher (권장)",
+        "전략 2: PostgreSQL Watcher",
+        "전략 3: ConfigMap + Rolling Update"
+      ]
+    },
+    {
+      "filename": "2025-12-02-openfga-rebac-limitations.md",
+      "title": "OpenFGA ReBAC 구현의 한계점 심층 분석",
+      "date": "2025-12-02",
+      "tags": [
+        "OpenFGA",
+        "ReBAC",
+        "Authorization",
+        "Zanzibar"
+      ],
+      "series": "",
+      "summary": "OpenFGA ReBAC 구현의 페이징, 검색 통합, 성능, 일관성 문제와 대규모 데이터셋을 위한 Materialize 패턴, CQRS 아키텍처 등 해결 전략을 정리한다.",
+      "keywords": [
+        "페이징의 근본적 한계",
+        "검색 + 권한 통합의 딜레마",
+        "성능 저하 패턴",
+        "일관성(Consistency) 문제",
+        "Write 작업 제한"
+      ]
+    },
     {
       "filename": "2025-11-29-openfga-rebac.md",
       "title": "OpenFGA와 ReBAC로 구현하는 관계 기반 권한 제어",
@@ -68,6 +241,117 @@
       ]
     },
     {
+      "filename": "2024-12-01-transactional-outbox-pattern-deep-dive.md",
+      "title": "Transactional Outbox 패턴으로 메시지 발행 신뢰성 확보하기",
+      "date": "2024-12-01",
+      "tags": [
+        "Outbox",
+        "Kafka",
+        "Spring",
+        "분산시스템",
+        "이벤트-드리븐",
+        "마이크로서비스",
+        "CDC",
+        "Debezium"
+      ],
+      "series": "",
+      "summary": "DB 트랜잭션과 Kafka 메시지 발행의 원자성을 보장하는 Transactional Outbox 패턴을 정리한다. Spring @TransactionalEventListener 구현, Polling vs CDC 비교, 재시도 전략까지.",
+      "keywords": [
+        "문제: Dual Write Problem",
+        "해결책: Transactional Outbox 패턴",
+        "Message Relay 구현 방식",
+        "Spring 구현: @TransactionalEventListener 활용",
+        "Outbox Processor: 실패한 이벤트 재시도"
+      ]
+    },
+    {
+      "filename": "2024-12-01-rate-limiting-deep-dive.md",
+      "title": "Rate Limiting 완벽 가이드: 알고리즘부터 분산 환경 구현까지",
+      "date": "2024-12-01",
+      "tags": [
+        "Rate-Limiting",
+        "Redis",
+        "분산시스템",
+        "API",
+        "Spring",
+        "Bucket4j",
+        "시스템설계"
+      ],
+      "series": "",
+      "summary": "API를 보호하는 Rate Limiting의 핵심 알고리즘(Token Bucket, Sliding Window 등)을 비교하고, Redis + Lua를 활용한 분산 환경 구현, Spring Boot 적용 방법까지 정리한다.",
+      "keywords": [
+        "Rate Limiting이란?",
+        "핵심 알고리즘",
+        "분산 환경 구현: Redis + Lua",
+        "Spring Boot 구현",
+        "HTTP 응답 설계"
+      ]
+    },
+    {
+      "filename": "2024-11-30-spring-component-scan-philosophy-part3.md",
+      "title": "Selectively Opinionated Spring Boot (3) - Mock 남용 없는 통합 테스트",
+      "date": "2024-11-30",
+      "tags": [
+        "Spring",
+        "Spring Boot",
+        "Testing",
+        "TestContainers",
+        "Integration Test",
+        "Kotest"
+      ],
+      "series": "Selectively Opinionated Spring Boot",
+      "summary": "프로덕션과 테스트의 빈 구성을 일치시키면서도 빠른 피드백을 얻는 테스트 전략. TestContainer와 Mock 어댑터 활용",
+      "keywords": [
+        "시리즈",
+        "들어가며",
+        "Import 패턴의 테스트 이점",
+        "테스트 디렉토리 구조",
+        "TestContainer 기반 인프라"
+      ]
+    },
+    {
+      "filename": "2024-11-30-spring-component-scan-philosophy-part2.md",
+      "title": "Selectively Opinionated Spring Boot (2) - 멀티앱, 하나의 코드베이스",
+      "date": "2024-11-30",
+      "tags": [
+        "Spring",
+        "Spring Boot",
+        "Multi-Module",
+        "Configuration",
+        "profiles.include"
+      ],
+      "series": "Selectively Opinionated Spring Boot",
+      "summary": "Spring Boot의 profiles.include로 설정을 조합하고, @Import로 앱별 어댑터를 선택하는 멀티앱 구성 전략",
+      "keywords": [
+        "시리즈",
+        "들어가며",
+        "Spring Boot가 제공하는 조합 도구",
+        "멀티앱 아키텍처",
+        "앱별 Import 구성"
+      ]
+    },
+    {
+      "filename": "2024-11-30-spring-component-scan-philosophy-part1.md",
+      "title": "Selectively Opinionated Spring Boot (1) - @ComponentScan의 함정",
+      "date": "2024-11-30",
+      "tags": [
+        "Spring",
+        "Spring Boot",
+        "Hexagonal Architecture",
+        "Component Scan",
+        "아키텍처"
+      ],
+      "series": "Selectively Opinionated Spring Boot",
+      "summary": "Spring Boot의 Convention over Configuration은 어디까지 받아들여야 하는가. @SpringBootApplication 대신 @EnableAutoConfiguration + @Import 패턴을 선택한 이유",
+      "keywords": [
+        "시리즈",
+        "들어가며",
+        "Spring Boot의 Convention over Configuration",
+        "@SpringBootApplication의 문제",
+        "해결: @EnableAutoConfiguration + @Import"
+      ]
+    },
+    {
       "filename": "2024-11-29-hugo-github-pages-auto-blog.md",
       "title": "AI 자동화 블로그 만들기 (1) - Hugo + GitHub Pages 구축",
       "date": "2024-11-29",
@@ -104,7 +388,7 @@
         "GitHub Pages"
       ],
       "series": "",
-      "summary": "Claude Code의 모든 기능을 정리한 종합 가이드. 설치부터 실전 프로젝트 적용까지.",
+      "summary": "Claude Code의 모든 기능을 정리한 완벽 가이드. 기본 설치와 사용법부터 CLAUDE.md 설정, 커스텀 슬래시 명령어, Skills/Agents 자동화, MCP 서버 연동, GitHub Actions 통합까지 실전 예제와 함께 다룬다.",
       "keywords": [
         "개요",
         "Part 1: 기본 사용법",
@@ -112,22 +396,173 @@
         "빌드 명령어",
         "코드 스타일"
       ]
+    },
+    {
+      "filename": "2023-12-11-kafka-dlt-strategy.md",
+      "title": "Kafka Consumer 재시도와 Dead Letter Topic 전략",
+      "date": "2023-12-11",
+      "tags": [
+        "Kafka",
+        "Spring Kafka",
+        "DLT",
+        "Dead Letter Topic",
+        "RetryableTopic",
+        "에러 핸들링"
+      ],
+      "series": "",
+      "summary": "Spring Kafka의 @RetryableTopic을 활용한 재시도 전략과 Dead Letter Topic 구현. 분산 환경에서 리스너를 동적으로 제어하는 방법까지",
+      "keywords": [
+        "Dead Letter Topic이란?",
+        "@RetryableTopic으로 재시도 구현",
+        "DLT 처리 전략",
+        "분산 환경에서 리스너 동적 제어",
+        "예외 분류 전략"
+      ]
+    },
+    {
+      "filename": "2023-12-08-kafka-high-volume-processing.md",
+      "title": "Kafka 대용량 메시지 처리: Batch Listener와 Bulk Insert 전략",
+      "date": "2023-12-08",
+      "tags": [
+        "Kafka",
+        "Spring Kafka",
+        "Batch Processing",
+        "Bulk Insert",
+        "성능 최적화"
+      ],
+      "series": "",
+      "summary": "1분마다 50만 건의 메시지를 처리하는 Telemetry 서비스 개선 사례. Kafka Batch Listener, Spring JDBC Bulk Insert, Async 처리를 조합한 대용량 데이터 처리 전략",
+      "keywords": [
+        "문제 상황",
+        "개선 전략 개요",
+        "전략 1: Kafka Batch Listener",
+        "전략 2: Bulk Insert",
+        "전략 3: Concurrency와 @Async"
+      ]
     }
   ],
   "tags": {
+    "Spring Boot": [
+      "2025-12-05-testcontainers-integration-test-strategy.md",
+      "2025-11-29-openfga-rebac.md",
+      "2024-11-30-spring-component-scan-philosophy-part3.md",
+      "2024-11-30-spring-component-scan-philosophy-part2.md",
+      "2024-11-30-spring-component-scan-philosophy-part1.md"
+    ],
+    "Testing": [
+      "2025-12-05-testcontainers-integration-test-strategy.md",
+      "2024-11-30-spring-component-scan-philosophy-part3.md"
+    ],
+    "Testcontainers": [
+      "2025-12-05-testcontainers-integration-test-strategy.md"
+    ],
+    "Integration Test": [
+      "2025-12-05-testcontainers-integration-test-strategy.md",
+      "2024-11-30-spring-component-scan-philosophy-part3.md"
+    ],
+    "Kotest": [
+      "2025-12-05-testcontainers-integration-test-strategy.md",
+      "2024-11-30-spring-component-scan-philosophy-part3.md"
+    ],
+    "Hexagonal Architecture": [
+      "2025-12-05-testcontainers-integration-test-strategy.md",
+      "2024-11-30-spring-component-scan-philosophy-part1.md"
+    ],
+    "PostgreSQL": [
+      "2025-12-04-postgresql-explain-analyze-complete-guide.md",
+      "2025-12-03-rebac-pagination-strategy-guide.md"
+    ],
+    "Query Optimization": [
+      "2025-12-04-postgresql-explain-analyze-complete-guide.md",
+      "2025-12-03-rebac-pagination-strategy-guide.md"
+    ],
+    "Performance": [
+      "2025-12-04-postgresql-explain-analyze-complete-guide.md"
+    ],
+    "Database": [
+      "2025-12-04-postgresql-explain-analyze-complete-guide.md"
+    ],
+    "EXPLAIN": [
+      "2025-12-04-postgresql-explain-analyze-complete-guide.md"
+    ],
+    "MongoDB": [
+      "2025-12-04-mongodb-vehicle-telemetry-pipeline.md"
+    ],
+    "Time-Series": [
+      "2025-12-04-mongodb-vehicle-telemetry-pipeline.md"
+    ],
+    "Kafka": [
+      "2025-12-04-mongodb-vehicle-telemetry-pipeline.md",
+      "2025-12-03-rebac-group-pattern-real-world.md",
+      "2024-12-01-transactional-outbox-pattern-deep-dive.md",
+      "2023-12-11-kafka-dlt-strategy.md",
+      "2023-12-08-kafka-high-volume-processing.md"
+    ],
+    "Vehicle": [
+      "2025-12-04-mongodb-vehicle-telemetry-pipeline.md"
+    ],
+    "IoT": [
+      "2025-12-04-mongodb-vehicle-telemetry-pipeline.md"
+    ],
+    "ClickHouse": [
+      "2025-12-04-mongodb-vehicle-telemetry-pipeline.md"
+    ],
+    "TimescaleDB": [
+      "2025-12-04-mongodb-vehicle-telemetry-pipeline.md"
+    ],
     "OpenFGA": [
+      "2025-12-03-rebac-pagination-strategy-guide.md",
+      "2025-12-03-rebac-group-pattern-real-world.md",
+      "2025-12-03-casbin-vs-openfga-comparison.md",
+      "2025-12-02-openfga-rebac-limitations.md",
       "2025-11-29-openfga-rebac.md"
     ],
     "ReBAC": [
+      "2025-12-03-rebac-pagination-strategy-guide.md",
+      "2025-12-03-rebac-group-pattern-real-world.md",
+      "2025-12-03-casbin-vs-openfga-comparison.md",
+      "2025-12-02-openfga-rebac-limitations.md",
       "2025-11-29-openfga-rebac.md"
+    ],
+    "Authorization": [
+      "2025-12-03-rebac-pagination-strategy-guide.md",
+      "2025-12-03-rebac-group-pattern-real-world.md",
+      "2025-12-03-casbin-vs-openfga-comparison.md",
+      "2025-12-03-casbin-k8s-multi-instance-sync.md",
+      "2025-12-02-openfga-rebac-limitations.md"
+    ],
+    "Pagination": [
+      "2025-12-03-rebac-pagination-strategy-guide.md"
+    ],
+    "CQRS": [
+      "2025-12-03-rebac-pagination-strategy-guide.md"
+    ],
+    "Spring-Boot": [
+      "2025-12-03-rebac-group-pattern-real-world.md",
+      "2025-12-03-casbin-k8s-multi-instance-sync.md"
+    ],
+    "Kotlin": [
+      "2025-12-03-rebac-group-pattern-real-world.md"
+    ],
+    "Casbin": [
+      "2025-12-03-casbin-vs-openfga-comparison.md",
+      "2025-12-03-casbin-k8s-multi-instance-sync.md"
+    ],
+    "Zanzibar": [
+      "2025-12-03-casbin-vs-openfga-comparison.md",
+      "2025-12-02-openfga-rebac-limitations.md"
+    ],
+    "Kubernetes": [
+      "2025-12-03-casbin-k8s-multi-instance-sync.md"
+    ],
+    "Redis": [
+      "2025-12-03-casbin-k8s-multi-instance-sync.md",
+      "2024-12-01-rate-limiting-deep-dive.md"
     ],
     "권한관리": [
       "2025-11-29-openfga-rebac.md"
     ],
     "RBAC": [
-      "2025-11-29-openfga-rebac.md"
-    ],
-    "Spring Boot": [
       "2025-11-29-openfga-rebac.md"
     ],
     "보안": [
@@ -159,11 +594,65 @@
       "2025-11-29-claude-code-anatomy.md"
     ],
     "아키텍처": [
-      "2025-11-29-claude-code-anatomy.md"
+      "2025-11-29-claude-code-anatomy.md",
+      "2024-11-30-spring-component-scan-philosophy-part1.md"
     ],
     "MCP": [
       "2025-11-29-claude-code-anatomy.md",
       "2024-11-29-claude-code-ultimate-guide.md"
+    ],
+    "Outbox": [
+      "2024-12-01-transactional-outbox-pattern-deep-dive.md"
+    ],
+    "Spring": [
+      "2024-12-01-transactional-outbox-pattern-deep-dive.md",
+      "2024-12-01-rate-limiting-deep-dive.md",
+      "2024-11-30-spring-component-scan-philosophy-part3.md",
+      "2024-11-30-spring-component-scan-philosophy-part2.md",
+      "2024-11-30-spring-component-scan-philosophy-part1.md"
+    ],
+    "분산시스템": [
+      "2024-12-01-transactional-outbox-pattern-deep-dive.md",
+      "2024-12-01-rate-limiting-deep-dive.md"
+    ],
+    "이벤트-드리븐": [
+      "2024-12-01-transactional-outbox-pattern-deep-dive.md"
+    ],
+    "마이크로서비스": [
+      "2024-12-01-transactional-outbox-pattern-deep-dive.md"
+    ],
+    "CDC": [
+      "2024-12-01-transactional-outbox-pattern-deep-dive.md"
+    ],
+    "Debezium": [
+      "2024-12-01-transactional-outbox-pattern-deep-dive.md"
+    ],
+    "Rate-Limiting": [
+      "2024-12-01-rate-limiting-deep-dive.md"
+    ],
+    "API": [
+      "2024-12-01-rate-limiting-deep-dive.md"
+    ],
+    "Bucket4j": [
+      "2024-12-01-rate-limiting-deep-dive.md"
+    ],
+    "시스템설계": [
+      "2024-12-01-rate-limiting-deep-dive.md"
+    ],
+    "TestContainers": [
+      "2024-11-30-spring-component-scan-philosophy-part3.md"
+    ],
+    "Multi-Module": [
+      "2024-11-30-spring-component-scan-philosophy-part2.md"
+    ],
+    "Configuration": [
+      "2024-11-30-spring-component-scan-philosophy-part2.md"
+    ],
+    "profiles.include": [
+      "2024-11-30-spring-component-scan-philosophy-part2.md"
+    ],
+    "Component Scan": [
+      "2024-11-30-spring-component-scan-philosophy-part1.md"
     ],
     "Hugo": [
       "2024-11-29-hugo-github-pages-auto-blog.md",
@@ -184,12 +673,42 @@
     ],
     "가이드": [
       "2024-11-29-claude-code-ultimate-guide.md"
+    ],
+    "Spring Kafka": [
+      "2023-12-11-kafka-dlt-strategy.md",
+      "2023-12-08-kafka-high-volume-processing.md"
+    ],
+    "DLT": [
+      "2023-12-11-kafka-dlt-strategy.md"
+    ],
+    "Dead Letter Topic": [
+      "2023-12-11-kafka-dlt-strategy.md"
+    ],
+    "RetryableTopic": [
+      "2023-12-11-kafka-dlt-strategy.md"
+    ],
+    "에러 핸들링": [
+      "2023-12-11-kafka-dlt-strategy.md"
+    ],
+    "Batch Processing": [
+      "2023-12-08-kafka-high-volume-processing.md"
+    ],
+    "Bulk Insert": [
+      "2023-12-08-kafka-high-volume-processing.md"
+    ],
+    "성능 최적화": [
+      "2023-12-08-kafka-high-volume-processing.md"
     ]
   },
   "series": {
     "AI 자동화 블로그": [
       "2025-11-29-github-claude-automation.md",
       "2024-11-29-hugo-github-pages-auto-blog.md"
+    ],
+    "Selectively Opinionated Spring Boot": [
+      "2024-11-30-spring-component-scan-philosophy-part3.md",
+      "2024-11-30-spring-component-scan-philosophy-part2.md",
+      "2024-11-30-spring-component-scan-philosophy-part1.md"
     ]
   }
 }

@@ -62,6 +62,12 @@ buildExpired = false
     url = "/search/"
     weight = 30
 
+  [[menu.main]]
+    identifier = "about"
+    name = "About"
+    url = "/about/"
+    weight = 40
+
 # 검색 페이지 출력 설정
 [outputs]
   home = ["HTML", "RSS", "JSON"]
@@ -76,6 +82,10 @@ buildExpired = false
 
   [markup.goldmark.renderer]
     unsafe = true
+
+  [markup.goldmark.parser.attribute]
+    block = true
+    title = true
 
 # Sitemap 설정
 [sitemap]

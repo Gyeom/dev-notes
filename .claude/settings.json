@@ -66,7 +66,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Write(content/posts/*)",
+        "matcher": "Write(**/content/posts/*.md)",
         "hooks": [
           {
             "type": "command",
@@ -79,7 +79,7 @@
         ]
       },
       {
-        "matcher": "Edit(content/posts/*)",
+        "matcher": "Edit(**/content/posts/*.md)",
         "hooks": [
           {
             "type": "command",

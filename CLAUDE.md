@@ -78,15 +78,17 @@ browser_take_screenshot({
 - 상세 페이지: 600-700px
 - 전체 페이지: `fullPage: true` 사용
 
-## Skills (자동 호출)
+## Skills (Model-Invoked)
 
-Claude가 상황에 맞게 자동으로 사용한다.
+Claude가 description을 보고 상황에 맞게 **자동으로** 사용한다.
 
-| Skill | 설명 |
-|-------|------|
-| `auto-proofreader` | 포스트 작성 시 기본 문체 검사 |
-| `auto-tagger` | 내용 기반 태그 자동 추천 |
-| `post-sync` | 작업 완료 후 관련 포스트 업데이트 확인 |
+| Skill | 트리거 상황 | 동작 |
+|-------|------------|------|
+| `auto-proofreader` | "포스트 작성", "블로그에 올려" 요청 시 | 문체 검사 (: 제거, ~입니다→~이다) |
+| `auto-tagger` | "포스트 작성", "태그 추천" 요청 시 | 3-7개 태그 자동 추천 |
+| `post-sync` | "커밋 완료", "배포 완료", "기능 추가" 후 | 관련 포스트 업데이트 필요성 점검 |
+
+> Skills는 `/명령어`로 호출하지 않는다. Claude가 상황을 인식해서 자동 실행한다.
 
 ## Agents (명시적 호출)
 
