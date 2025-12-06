@@ -57,7 +57,7 @@ class PaymentServiceTest {
 }
 ```
 
-**문제**: Spring은 `@MockBean` 조합이 다르면 Context를 캐시하지 못한다. 테스트 클래스마다 Context를 새로 로드하면서 **12초 이상**의 지연이 발생할 수 있다.
+**문제**: Spring은 `@MockBean` 조합이 다르면 Context를 캐시하지 못한다. 테스트 클래스마다 Context를 새로 로드하면서 **수 초~수십 초**의 지연이 발생한다.
 
 ```kotlin
 // ✅ 좋은 예: 공통 베이스 클래스로 Context 재사용
