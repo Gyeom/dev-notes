@@ -56,20 +56,17 @@ OpenFGA는 Auth0의 Zanzibar 논문을 기반으로 만든 오픈소스 권한 �
 
 ### 아키텍처
 
-```
-애플리케이션
-    ↓
-OpenFGA API
-    ↓
-+-----------------+
-| Authorization   |
-| Model (DSL)     |
-+-----------------+
-    ↓
-+-----------------+
-| Relationship    |
-| Tuples (Storage)|
-+-----------------+
+```mermaid
+flowchart TB
+    App[애플리케이션] --> API[OpenFGA API]
+
+    subgraph OpenFGA
+        API --> Model["Authorization Model<br/>(DSL)"]
+        Model --> Tuples["Relationship Tuples<br/>(Storage)"]
+    end
+
+    style App fill:#e3f2fd
+    style OpenFGA fill:#fff3e0
 ```
 
 1. **Authorization Model**: 권한 규칙 정의 (DSL)
