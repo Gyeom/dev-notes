@@ -7,7 +7,7 @@
 - `/concepts` - 전체 목차
 - `/concepts kafka` - Kafka 개념
 - `/concepts db` - 데이터베이스 개념
-- `/concepts open` - 브라우저에서 목차 열기
+- `/concepts open` - 브라우저에서 목차 열기 (GitHub)
 - `/concepts open db` - 브라우저에서 DB 개념 열기
 
 ## 인자: $ARGUMENTS
@@ -15,9 +15,12 @@
 ## 실행
 
 ### 브라우저로 열기 (open 인자)
-인자가 `open`으로 시작하면 IDE나 브라우저에서 해당 파일을 연다.
-- `/concepts open` → `.claude/knowledge/concepts/00-index.md` 파일을 IDE에서 열기
-- `/concepts open kafka` → 관련 파일을 IDE에서 열기
+인자가 `open`으로 시작하면 GitHub에서 해당 파일을 브라우저로 연다.
+
+**GitHub 베이스 URL**: `https://github.com/Gyeom/dev-notes/blob/main/.claude/knowledge/concepts/`
+
+- `/concepts open` → `open "https://github.com/Gyeom/dev-notes/blob/main/.claude/knowledge/concepts/00-index.md"` 실행
+- `/concepts open kafka` → `open "https://github.com/Gyeom/dev-notes/blob/main/.claude/knowledge/concepts/01-kafka.md"` 실행
 
 ### CLI에서 조회
 1. 인자가 없으면 `.claude/knowledge/concepts/00-index.md` 목차를 보여준다.

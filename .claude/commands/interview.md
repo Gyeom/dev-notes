@@ -7,7 +7,7 @@
 - `/interview` - 전체 목차
 - `/interview kafka` - Kafka 관련 자료
 - `/interview 아키텍처` - 아키텍처 관련 자료
-- `/interview open` - 브라우저에서 목차 열기
+- `/interview open` - 브라우저에서 목차 열기 (GitHub)
 - `/interview open kafka` - 브라우저에서 Kafka 자료 열기
 
 ## 인자: $ARGUMENTS
@@ -15,9 +15,12 @@
 ## 실행
 
 ### 브라우저로 열기 (open 인자)
-인자가 `open`으로 시작하면 IDE나 브라우저에서 해당 파일을 연다.
-- `/interview open` → `.claude/knowledge/interview/00-index.md` 파일을 IDE에서 열기
-- `/interview open kafka` → 관련 파일들을 IDE에서 열기
+인자가 `open`으로 시작하면 GitHub에서 해당 파일을 브라우저로 연다.
+
+**GitHub 베이스 URL**: `https://github.com/Gyeom/dev-notes/blob/main/.claude/knowledge/interview/`
+
+- `/interview open` → `open "https://github.com/Gyeom/dev-notes/blob/main/.claude/knowledge/interview/00-index.md"` 실행
+- `/interview open kafka` → 관련 파일들을 GitHub에서 열기 (02-kafka-batch-processing.md, 03-kafka-dlt-dlq.md)
 
 ### CLI에서 조회
 1. 인자가 없으면 `.claude/knowledge/interview/00-index.md` 목차를 보여준다.
