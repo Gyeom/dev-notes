@@ -48,9 +48,18 @@ draft: true
 }
 .contact-row {
   display: flex;
-  gap: 1.5rem;
+  gap: 0;
   align-items: center;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.contact-row .contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.contact-row .contact-item:not(:last-child) {
+  margin-right: 1.5rem;
 }
 .contact-row a {
   color: var(--primary);
@@ -149,10 +158,10 @@ draft: true
       메시지 유실 문제를 해결하여 데이터 정합성 100%를 달성한 경험이 있습니다.
     </div>
     <div class="contact-row">
-      <span>📧 koreatech93@naver.com</span>
-      <a href="https://github.com/gyeom">GitHub</a>
-      <a href="https://medium.com/@rlaeorua369">Medium</a>
-      <a href="https://gyeom.github.io/dev-notes/">Dev Notes</a>
+      <span class="contact-item">koreatech93@naver.com</span>
+      <a href="https://github.com/gyeom" class="contact-item">GitHub</a>
+      <a href="https://medium.com/@rlaeorua369" class="contact-item">Medium</a>
+      <a href="https://gyeom.github.io/dev-notes/" class="contact-item">Dev Notes</a>
     </div>
   </div>
 </div>
@@ -212,7 +221,7 @@ draft: true
       DB 트랜잭션과 Kafka 메시지 발행 간 원자성 미보장 문제 해결<br>
       → Outbox 테이블 + @TransactionalEventListener 기반 하이브리드 패턴 구현
     </div>
-    <div class="achievement-link">📝 <a href="/dev-notes/posts/2024-12-01-transactional-outbox-pattern-deep-dive/">블로그: Transactional Outbox 패턴</a></div>
+    <div class="achievement-link">📝 <a href="https://gyeom.github.io/dev-notes/posts/2024-07-15-transactional-outbox-pattern-deep-dive/">블로그: Transactional Outbox 패턴</a></div>
   </div>
 
   <div class="achievement">
@@ -222,7 +231,7 @@ draft: true
       → PostgreSQL 기반 DLQ + 재처리 메커니즘 구현<br>
       → 데이터 유실 제로 달성
     </div>
-    <div class="achievement-link">📝 <a href="/dev-notes/posts/2025-12-05-dlq-retry-strategy-kafka-postgresql/">블로그: DLQ 재처리 전략</a></div>
+    <div class="achievement-link">📝 <a href="https://gyeom.github.io/dev-notes/posts/2025-09-15-dlq-retry-strategy-kafka-postgresql/">블로그: DLQ 재처리 전략</a></div>
   </div>
 
   <div class="achievement">
@@ -234,7 +243,7 @@ draft: true
       → 테스트 간 데이터 격리로 실행 순서 무관하게 안정적 실행<br>
       → Mock은 외부 API 연동에만 제한적 사용
     </div>
-    <div class="achievement-link">📝 <a href="/dev-notes/posts/2025-12-05-testcontainers-integration-test-strategy/">블로그: Testcontainers 기반 통합 테스트 전략</a></div>
+    <div class="achievement-link">📝 <a href="https://gyeom.github.io/dev-notes/posts/2024-08-10-testcontainers-integration-test-strategy/">블로그: Testcontainers 기반 통합 테스트 전략</a></div>
   </div>
 
   <div class="achievement">
@@ -244,17 +253,7 @@ draft: true
       → 그룹 기반 UX 설계로 권한 조회 복잡도 해소<br>
       → 도메인 DB 활용한 효율적인 페이징 구현
     </div>
-    <div class="achievement-link">📝 <a href="/dev-notes/posts/2025-02-10-rebac-group-pattern-real-world/">블로그: OpenFGA 권한 기반 검색 전략</a></div>
-  </div>
-
-  <div class="achievement">
-    <div class="achievement-title">▸ Observability 체계 구축</div>
-    <div class="achievement-detail">
-      LGTM 스택(Loki, Grafana, Tempo, Mimir) 기반 모니터링 환경 구성<br>
-      → Micrometer + AOP 기반 커스텀 비즈니스 메트릭 설계<br>
-      → Grafana Alert 설정으로 임계치 초과 시 Slack 알림 자동화<br>
-      → 장애 감지 시간 단축 및 운영 가시성 확보
-    </div>
+    <div class="achievement-link">📝 <a href="https://gyeom.github.io/dev-notes/posts/2025-02-10-rebac-group-pattern-real-world/">블로그: OpenFGA 권한 기반 검색 전략</a></div>
   </div>
 
   <div class="achievement">
@@ -263,12 +262,13 @@ draft: true
       서비스 안정성 확보를 위한 Rate Limiting 설계<br>
       → Token Bucket 알고리즘 + Redis 기반 분산 환경 구현
     </div>
-    <div class="achievement-link">📝 <a href="/dev-notes/posts/2024-12-01-rate-limiting-deep-dive/">블로그: Rate Limiting 완벽 가이드</a></div>
+    <div class="achievement-link">📝 <a href="https://gyeom.github.io/dev-notes/posts/2024-08-20-rate-limiting-deep-dive/">블로그: Rate Limiting 가이드</a></div>
   </div>
 
   <div class="achievement">
     <div class="achievement-title">▸ 기타 성과</div>
     <div class="achievement-detail">
+      • LGTM 스택 기반 Observability 구축 (Micrometer 커스텀 메트릭, Grafana Alert)<br>
       • Hexagonal Architecture 기반 서비스 설계로 외부 의존성 격리<br>
       • Kotlin JPA 엔티티 설계 (Persistable 인터페이스 활용)
         <a href="https://medium.com/@rlaeorua369/kotlin-%EA%B8%B0%EB%B0%98-jpa-%EC%97%94%ED%8B%B0%ED%8B%B0-%EC%84%A4%EA%B3%84-%EC%A0%84%EB%9E%B5-28ccc31d0c2b">📝</a><br>
@@ -300,7 +300,7 @@ draft: true
       → Batch Consumer + Spring JDBC Bulk Insert + @Async Thread Pool 튜닝<br>
       → 시뮬레이터 기반 부하테스트로 안정성 검증
     </div>
-    <div class="achievement-link">📝 <a href="/dev-notes/posts/2023-12-08-kafka-high-volume-processing/">블로그: Kafka 대용량 메시지 처리</a></div>
+    <div class="achievement-link">📝 <a href="https://gyeom.github.io/dev-notes/posts/2023-12-08-kafka-high-volume-processing/">블로그: Kafka 대용량 메시지 처리</a></div>
   </div>
 
   <div class="achievement">
@@ -310,7 +310,7 @@ draft: true
       → Kafka DLT 기반 재처리 메커니즘 + 모니터링 체계 강화<br>
       → 기존에 발견하지 못한 수십 개 엣지 케이스 오류 해결
     </div>
-    <div class="achievement-link">📝 <a href="/dev-notes/posts/2023-12-11-kafka-dlt-strategy/">블로그: Kafka DLT 재처리 전략</a></div>
+    <div class="achievement-link">📝 <a href="https://gyeom.github.io/dev-notes/posts/2023-12-11-kafka-dlt-strategy/">블로그: Kafka DLT 재처리 전략</a></div>
   </div>
 
   <div class="achievement">
@@ -329,7 +329,7 @@ draft: true
       → Cache-Aside 패턴 + 이벤트 기반 캐시 무효화 적용<br>
       → 캐시 Hit Rate <span class="highlight-metric">90%</span> 이상 달성
     </div>
-    <div class="achievement-link">📝 <a href="/dev-notes/posts/2025-12-05-redis-caching-strategy-real-world/">블로그: Redis 캐싱 전략</a></div>
+    <div class="achievement-link">📝 <a href="https://gyeom.github.io/dev-notes/posts/2023-06-15-redis-caching-strategy-real-world/">블로그: Redis 캐싱 전략</a></div>
   </div>
 </div>
 {{< /rawhtml >}}
@@ -366,7 +366,7 @@ draft: true
   <div class="activity-meta">IntelliJ Plugin · 2025.11 ~</div>
   <div class="activity-desc">
     Git Diff를 분석해 LLM(OpenAI/Claude)으로 Jira 티켓을 자동 생성하는 플러그인<br>
-    → <a href="/dev-notes/posts/2025-11-29-intellij-plugin-jira-automation-llm/">개발기</a>
+    → <a href="https://gyeom.github.io/dev-notes/posts/2025-11-29-intellij-plugin-jira-automation-llm/">개발기</a>
   </div>
 </div>
 
@@ -394,7 +394,8 @@ draft: true
   <div class="activity-meta">2023.04</div>
   <div class="activity-desc">
     "글로벌 서비스를 위한 Timezone/DST" 주제로 발표
-    → <a href="https://springcamp.ksug.org/2023/">Spring Camp 2023</a>
+    → <a href="https://www.youtube.com/watch?v=b0qGno4VJ8I">발표 영상</a>
+    · <a href="https://springcamp.ksug.org/2023/">Spring Camp 2023</a>
   </div>
 </div>
 
