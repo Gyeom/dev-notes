@@ -151,7 +151,7 @@ draft: true
   <img src="/dev-notes/images/profile.png" alt="김대겸" class="profile-img">
   <div class="resume-header-text">
     <h1>김대겸</h1>
-    <div class="subtitle">Backend Engineer · 7년차</div>
+    <div class="subtitle">Backend Engineer · 7년차 · 1993.08.16</div>
     <div class="intro">
       대규모 데이터 파이프라인 설계와 안정적인 시스템 운영에 강점을 가진 백엔드 개발자.<br>
       50만대 장비의 실시간 데이터를 처리하는 시스템을 설계하고,<br>
