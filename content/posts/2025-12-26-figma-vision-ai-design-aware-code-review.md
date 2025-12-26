@@ -25,6 +25,9 @@ Vision AI가 이미지를 이해할 수 있다면, 이 과정을 자동화할 �
 
 ## 해결책: Figma → Vision AI → API Spec → Code Review
 
+![Extract API Specs UI](/images/posts/2025-12-26-figma-vision-ai/extract-api-specs-ui.png)
+*Figma URL을 입력하면 각 Frame을 Vision AI로 분석하여 API 스펙을 추출한다. 173개 Frame 중 16개 분석 완료 (9%).*
+
 ```mermaid
 flowchart LR
     subgraph Input
