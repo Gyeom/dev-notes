@@ -18,3 +18,6 @@ hugo.deb
 
 # Claude Code 로컬 설정
 .claude/settings.local.json
+
+# 면접 자료 (로컬 전용)
+interview/
