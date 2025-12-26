@@ -7,7 +7,7 @@ categories: ["Database"]
 summary: "SQLite WAL 모드를 활용한 동시 읽기/쓰기 처리와 분석 데이터 저장 시스템 설계"
 ---
 
-> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2024-12-22-claude-flow-development-story/)에서 확인할 수 있다.
+> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
 
 ## 왜 SQLite인가
 
@@ -259,3 +259,7 @@ WAL 모드에서는 인덱스 업데이트도 WAL 파일에 기록되므로 쓰�
 - [How SQLite Scales Read Concurrency](https://fly.io/blog/sqlite-internals-wal/) - Fly.io Blog
 - [WAL mode](https://highperformancesqlite.com/watch/wal-mode) - High Performance SQLite
 - [SQLite When to Use](https://sqlite.org/whentouse.html) - SQLite 공식 문서
+
+---
+
+> **시리즈**: [Claude Flow 개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/) | **이전 글**: [피드백 학습으로 라우팅 개선](/dev-notes/posts/2025-11-15-feedback-learning-agent/) | **다음 글**: [코드 임베딩으로 MR 리뷰 컨텍스트 구축](/dev-notes/posts/2025-11-20-code-embedding-mr-review/)

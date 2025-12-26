@@ -7,6 +7,47 @@ categories: ["개발기"]
 summary: "Claude Code Max의 무제한 사용을 팀에 공유하고, 로컬 우선 아키텍처로 비용과 보안을 잡은 AI 에이전트 플랫폼 개발기"
 ---
 
+> 이 글은 Claude Flow 시리즈의 **개발기**다. AI 에이전트, RAG, Context Engineering의 개념이 처음이라면 먼저 기초 포스트를 읽어보자.
+
+## 시리즈 안내
+
+### 기초 개념 (먼저 읽기)
+
+| 주제 | 내용 |
+|------|------|
+| [AI Agent 아키텍처의 이해](/dev-notes/posts/2025-10-01-ai-agent-architecture-fundamentals/) | 에이전트의 핵심 구성요소와 아키텍처 패턴 |
+| [RAG 시스템 설계 가이드](/dev-notes/posts/2025-10-05-rag-system-design-guide/) | 벡터 검색, 청킹, 임베딩의 원리 |
+| [Context Engineering의 이해](/dev-notes/posts/2025-10-10-context-engineering-fundamentals/) | 프롬프트 증강과 컨텍스트 관리 |
+
+### 구현 시리즈
+
+```mermaid
+flowchart LR
+    subgraph Foundation["기초 개념"]
+        F1["AI Agent"]
+        F2["RAG"]
+        F3["Context Engineering"]
+    end
+
+    subgraph Implementation["구현"]
+        I1["세션 관리"]
+        I2["라우팅"]
+        I3["피드백 학습"]
+        I4["코드 임베딩"]
+        I5["컨텍스트 증강"]
+        I6["성능 최적화"]
+    end
+
+    F1 --> I2 & I3 & I6
+    F2 --> I2 & I4
+    F3 --> I1 & I5
+
+    style Foundation fill:#E8F5E9
+    style Implementation fill:#E3F2FD
+```
+
+---
+
 ## 문제
 
 Claude API를 팀에서 쓰면 토큰당 과금이다. 코드 리뷰 한 번에 수만 토큰, 팀원 10명이 하루 10번씩 쓰면 월 수백만원이 나간다.
@@ -151,11 +192,25 @@ Claude Flow는 현재 팀 내에서 실제로 사용 중이다. 하루 수백 �
 
 개발 과정에서 깊이 다룬 기술들을 별도 포스트로 정리했다.
 
-| 주제 | 내용 |
-|------|------|
-| [Session Resume로 토큰 비용 절감](/dev-notes/posts/2025-11-05-claude-code-session-resume/) | `--resume` 플래그로 컨텍스트 재사용 |
-| [다단계 에이전트 라우팅](/dev-notes/posts/2025-11-08-multi-stage-agent-routing/) | 5단계 라우팅 파이프라인 설계 |
-| [RAG 기반 에이전트 라우팅](/dev-notes/posts/2025-11-12-rag-agent-routing/) | Qdrant + Ollama로 시맨틱 검색 |
-| [피드백 학습으로 라우팅 개선](/dev-notes/posts/2025-11-15-feedback-learning-agent/) | 👍/👎 피드백을 라우팅에 반영 |
-| [SQLite WAL 모드로 고처리량 달성](/dev-notes/posts/2025-11-18-sqlite-wal-high-throughput/) | 읽기/쓰기 동시 처리 |
-| [코드 임베딩으로 MR 리뷰 컨텍스트 구축](/dev-notes/posts/2025-11-20-code-embedding-mr-review/) | 코드베이스 벡터화 |
+### 에이전트 라우팅
+
+| 포스트 | 핵심 내용 | 관련 개념 |
+|--------|----------|----------|
+| [다단계 에이전트 라우팅](/dev-notes/posts/2025-11-08-multi-stage-agent-routing/) | 5단계 라우팅 파이프라인 | AI Agent |
+| [RAG 기반 에이전트 라우팅](/dev-notes/posts/2025-11-12-rag-agent-routing/) | Qdrant + Ollama 시맨틱 검색 | RAG |
+| [피드백 학습으로 라우팅 개선](/dev-notes/posts/2025-11-15-feedback-learning-agent/) | 👍/👎 피드백 학습 | AI Agent |
+
+### 컨텍스트 관리
+
+| 포스트 | 핵심 내용 | 관련 개념 |
+|--------|----------|----------|
+| [Session Resume로 토큰 비용 절감](/dev-notes/posts/2025-11-05-claude-code-session-resume/) | 프롬프트 캐싱, 세션 재개 | Context Engineering |
+| [Context Enrichment Pipeline](/dev-notes/posts/2025-12-26-context-enrichment-pipeline/) | Chain of Responsibility 패턴 | Context Engineering |
+| [AI 에이전트 성능 최적화](/dev-notes/posts/2025-12-26-ai-agent-performance-optimization/) | Pre-analysis, 시맨틱 캐싱 | AI Agent |
+
+### 인프라
+
+| 포스트 | 핵심 내용 | 관련 개념 |
+|--------|----------|----------|
+| [SQLite WAL 모드로 고처리량 달성](/dev-notes/posts/2025-11-18-sqlite-wal-high-throughput/) | 읽기/쓰기 동시 처리 | - |
+| [코드 임베딩으로 MR 리뷰 컨텍스트 구축](/dev-notes/posts/2025-11-20-code-embedding-mr-review/) | 코드베이스 벡터화 | RAG |

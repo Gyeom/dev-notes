@@ -7,7 +7,9 @@ categories: ["아키텍처"]
 summary: "Qdrant 벡터 데이터베이스와 Ollama 임베딩을 활용한 RAG 파이프라인으로 에이전트 라우팅 정확도를 개선한 과정"
 ---
 
-> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2024-12-22-claude-flow-development-story/)에서 확인할 수 있다.
+> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
+>
+> **관련 개념**: [RAG 시스템 설계 가이드](/dev-notes/posts/2025-10-05-rag-system-design-guide/) - 벡터 검색, 임베딩, Re-ranking의 원리
 
 ## RAG가 필요한 이유
 
@@ -192,3 +194,7 @@ RAG 기반 에이전트 라우팅의 장점:
 - [Best Chunking Strategies for RAG in 2025](https://www.firecrawl.dev/blog/best-chunking-strategies-rag-2025) - Firecrawl
 - [Vector Search Resource Optimization Guide](https://qdrant.tech/articles/vector-search-resource-optimization/) - Qdrant
 - [qwen3-embedding](https://ollama.com/library/qwen3-embedding) - Ollama
+
+---
+
+> **시리즈**: [Claude Flow 개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/) | **이전 글**: [다단계 에이전트 라우팅](/dev-notes/posts/2025-11-08-multi-stage-agent-routing/) | **다음 글**: [피드백 학습으로 라우팅 개선](/dev-notes/posts/2025-11-15-feedback-learning-agent/)

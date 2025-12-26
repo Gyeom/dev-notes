@@ -7,7 +7,9 @@ categories: ["Architecture"]
 summary: "코드를 의미 단위로 청킹하고 벡터화하여 MR 리뷰 시 관련 코드를 자동으로 검색하는 RAG 시스템"
 ---
 
-> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2024-12-22-claude-flow-development-story/)에서 확인할 수 있다.
+> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
+>
+> **관련 개념**: [RAG 시스템 설계 가이드](/dev-notes/posts/2025-10-05-rag-system-design-guide/) - 청킹 전략과 벡터 검색의 원리
 
 ## 문제 정의
 
@@ -264,3 +266,7 @@ Claude는 이 프롬프트를 받아 관련 코드베이스와 가이드라인�
 - [Best Chunking Strategies for RAG in 2025](https://www.firecrawl.dev/blog/best-chunking-strategies-rag-2025) - Firecrawl
 - [Search Through Your Codebase](https://qdrant.tech/documentation/advanced-tutorials/code-search/) - Qdrant
 - [Building a Semantic Code Search Agent](https://mihirinamdar.medium.com/building-a-semantic-code-search-agent-with-qdrant-a-modern-approach-to-code-metadata-indexing-ac3a53ded594) - Medium
+
+---
+
+> **시리즈**: [Claude Flow 개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/) | **이전 글**: [SQLite WAL 모드로 고처리량 달성](/dev-notes/posts/2025-11-18-sqlite-wal-high-throughput/) | **다음 글**: [Context Enrichment Pipeline](/dev-notes/posts/2025-12-26-context-enrichment-pipeline/)

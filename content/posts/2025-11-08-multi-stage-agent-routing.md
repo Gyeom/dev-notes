@@ -7,7 +7,9 @@ categories: ["Architecture"]
 summary: "사용자 의도를 정확히 파악하여 적합한 에이전트로 라우팅하는 5단계 파이프라인 설계. 피드백 학습, 키워드 매칭, 패턴 매칭, 시맨틱 검색, 폴백 전략을 통해 높은 정확도와 성능을 동시에 달성한다."
 ---
 
-> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2024-12-22-claude-flow-development-story/)에서 확인할 수 있다.
+> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
+>
+> **관련 개념**: [AI Agent 아키텍처의 이해](/dev-notes/posts/2025-10-01-ai-agent-architecture-fundamentals/) - Router 패턴과 멀티 에이전트 시스템의 기초
 
 ## 개요
 
@@ -216,3 +218,7 @@ flowchart LR
 - [Semantic Router and Its Role in Designing Agentic Workflows](https://thenewstack.io/semantic-router-and-its-role-in-designing-agentic-workflows/) - The New Stack
 - [A Taxonomy of Hierarchical Multi-Agent Systems](https://arxiv.org/html/2508.12683) - arXiv
 - [Developer's guide to multi-agent patterns in ADK](https://developers.googleblog.com/developers-guide-to-multi-agent-patterns-in-adk/) - Google Developers Blog
+
+---
+
+> **시리즈**: [Claude Flow 개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/) | **이전 글**: [Session Resume로 토큰 비용 절감](/dev-notes/posts/2025-11-05-claude-code-session-resume/) | **다음 글**: [RAG 기반 에이전트 라우팅](/dev-notes/posts/2025-11-12-rag-agent-routing/)
