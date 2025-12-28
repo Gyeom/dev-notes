@@ -129,18 +129,20 @@ CREATE INDEX idx_outbox_status_retry
 Outbox 테이블에 저장된 이벤트를 Kafka로 전달하는 방식은 크게 두 가지다.
 
 ```mermaid
-flowchart TB
-    subgraph "Polling Publisher"
-        A1[Scheduler] -->|5초 주기| B1[Outbox 테이블 조회]
+flowchart LR
+    subgraph Polling["Polling Publisher"]
+        A1[Scheduler] --> B1[Outbox 조회]
         B1 --> C1[Kafka 발행]
         C1 --> D1[상태 업데이트]
     end
 
-    subgraph "Transaction Log Tailing (CDC)"
-        A2[Database] -->|WAL/Binlog| B2[Debezium]
+    subgraph CDC["Transaction Log Tailing (CDC)"]
+        A2[Database] --> B2[Debezium]
         B2 --> C2[Kafka Connect]
         C2 --> D2[Kafka]
     end
+
+    Polling ~~~ CDC
 ```
 
 ### 방식 1: Polling Publisher
@@ -189,25 +191,18 @@ flowchart TB
 > 트랜잭션 커밋 직후 **즉시 Kafka 발행을 시도**하고, Outbox 스케줄러는 **실패하거나 누락된 이벤트만** 처리한다.
 
 ```mermaid
-flowchart TB
-    subgraph "트랜잭션"
-        A[비즈니스 로직] --> B[Entity 저장]
-        B --> C[Outbox 저장<br/>status=PENDING]
-    end
+flowchart LR
+    A[비즈니스 로직] --> B[Entity 저장]
+    B --> C[Outbox 저장]
 
-    C --> D{AFTER_COMMIT<br/>즉시 발행}
+    C --> D{AFTER_COMMIT}
 
-    D -->|성공| E[status=PUBLISHED]
-    D -->|실패| F[status=FAILED]
-    D -->|앱 크래시| G[status=PENDING 유지]
+    D -->|성공| E[PUBLISHED]
+    D -->|실패| F[FAILED]
+    D -->|크래시| G[PENDING]
 
-    subgraph "스케줄러 (Fallback)"
-        H[5초마다: 오래된 PENDING 조회]
-        I[60초마다: FAILED 재시도]
-    end
-
-    F --> I
-    G --> H
+    F --> I[재시도]
+    G --> H[지연 처리]
     H --> D
     I --> D
 

@@ -54,13 +54,9 @@ flowchart LR
 **Context**는 프롬프트를 포함한 LLM이 보는 모든 정보다.
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Context["전체 컨텍스트"]
-        S["시스템 프롬프트"]
-        R["검색된 문서 (RAG)"]
-        T["도구 실행 결과"]
-        H["대화 히스토리"]
-        U["사용자 프롬프트"]
+        S["시스템"] ~~~ R["RAG"] ~~~ T["도구"] ~~~ H["히스토리"] ~~~ U["사용자"]
     end
 
     style U fill:#E3F2FD
@@ -145,23 +141,10 @@ flowchart LR
 > — [OpenAI Best Practices](https://platform.openai.com/docs/guides/prompt-engineering)
 
 ```mermaid
-flowchart TB
-    subgraph Input["입력 정보"]
-        I1["관련 문서 3개"]
-        I2["무관 문서 10개"]
-    end
-
-    subgraph Filter["필터링"]
-        F["유사도 > 0.7"]
-    end
-
-    subgraph Output["최종 컨텍스트"]
-        O["관련 문서 3개만"]
-    end
-
-    I1 --> F
-    I2 -.->|제외| F
-    F --> O
+flowchart LR
+    I1["관련 문서 3개"] --> F["유사도 > 0.7"]
+    I2["무관 문서 10개"] -.->|제외| F
+    F --> O["관련 문서만"]
 
     style I2 fill:#FFEBEE
     style O fill:#E8F5E9
@@ -210,13 +193,8 @@ flowchart LR
 > — [Lost in the Middle Paper](https://arxiv.org/abs/2307.03172)
 
 ```mermaid
-flowchart TB
-    subgraph Optimal["최적 배치"]
-        direction TB
-        H["🔝 가장 중요한 정보"]
-        M["📍 중간"]
-        L["🔝 두 번째로 중요한 정보"]
-    end
+flowchart LR
+    H["🔝 중요 1"] --> M["📍 중간"] --> L["🔝 중요 2"]
 
     style H fill:#E8F5E9
     style L fill:#E8F5E9
@@ -265,13 +243,15 @@ flowchart TB
 상황에 따라 컨텍스트를 동적으로 조절한다.
 
 ```mermaid
-flowchart TB
-    Q["질문 분석"] --> T{유형?}
-    T -->|코드 질문| C1["코드베이스 검색<br/>기술 문서 포함"]
-    T -->|일반 질문| C2["최소 컨텍스트<br/>대화 히스토리만"]
-    T -->|복잡한 작업| C3["전체 프로젝트 컨텍스트<br/>관련 문서 모두"]
+flowchart LR
+    Q["질문"] --> T{유형?}
+    T -->|코드| C1["코드베이스+문서"]
+    T -->|일반| C2["최소 컨텍스트"]
+    T -->|복잡| C3["전체 컨텍스트"]
 
-    C1 & C2 & C3 --> L["LLM"]
+    C1 --> L["LLM"]
+    C2 --> L
+    C3 --> L
 
     style C1 fill:#E3F2FD
     style C2 fill:#E8F5E9
@@ -332,24 +312,10 @@ flowchart LR
 ## 실전 예시: 코드 리뷰 컨텍스트
 
 ```mermaid
-flowchart TB
-    subgraph Input["입력"]
-        MR["MR Diff"]
-        Q["리뷰 요청"]
-    end
-
-    subgraph Enrichment["Context Enrichment"]
-        E1["프로젝트 컨벤션"]
-        E2["관련 코드 (RAG)"]
-        E3["보안 가이드라인"]
-        E4["이전 리뷰 패턴"]
-    end
-
-    subgraph Context["최종 컨텍스트"]
-        C["## 프로젝트 규칙<br/>{컨벤션}<br/><br/>## 관련 코드<br/>{RAG 결과}<br/><br/>## 리뷰 포인트<br/>{가이드라인}<br/><br/>## MR 변경사항<br/>{Diff}"]
-    end
-
-    Input --> Enrichment --> Context --> LLM["Claude"]
+flowchart LR
+    Input["MR + 요청"] --> Enrichment["컨벤션+RAG+가이드라인"]
+    Enrichment --> Context["최종 컨텍스트"]
+    Context --> LLM["Claude"]
 
     style Enrichment fill:#E3F2FD
     style Context fill:#E8F5E9

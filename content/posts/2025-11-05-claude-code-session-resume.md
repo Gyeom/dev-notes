@@ -88,29 +88,14 @@ claude --resume session-abc123 --print "다음 단계 진행해줘"
 Claude Flow에서는 Slack 스레드 기반으로 세션을 관리한다.
 
 ```mermaid
-flowchart TB
-    subgraph Slack["Slack 스레드"]
-        U1["사용자 메시지 1"] --> U2["사용자 메시지 2"]
-        U2 --> U3["사용자 메시지 3"]
-    end
-
-    subgraph SessionCache["세션 캐시"]
-        K["키: userId:threadTs"]
-        V["값: sessionId, lastUsedAt"]
-    end
-
-    subgraph ClaudeExecutor["Claude Executor"]
-        Check{세션 존재?}
-        Check -->|Yes| Resume["--resume sessionId"]
-        Check -->|No| New["새 세션 생성"]
-        Resume --> Execute["CLI 실행"]
-        New --> Execute
-        Execute --> Save["세션 ID 저장"]
-    end
-
-    Slack --> K
-    K --> Check
-    Save --> V
+flowchart LR
+    Slack["Slack 스레드"] --> Cache["세션 캐시"]
+    Cache --> Check{세션?}
+    Check -->|Yes| Resume["--resume"]
+    Check -->|No| New["새 세션"]
+    Resume --> Execute["CLI 실행"]
+    New --> Execute
+    Execute --> Save["저장"]
 ```
 
 ### 핵심 설계

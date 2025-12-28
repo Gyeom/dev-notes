@@ -38,23 +38,20 @@ pie title 응답 시간 분포
 ### 병목점 분류
 
 ```mermaid
-flowchart TD
-    subgraph Critical["🔴 Critical - 즉시 해결"]
-        C1["동기 블로킹 API"]
-        C2["반복되는 대용량 프롬프트"]
-        C3["무제한 히스토리 누적"]
+flowchart LR
+    subgraph Critical["🔴 Critical"]
+        C1["동기 블로킹 API"] ~~~ C2["대용량 프롬프트"] ~~~ C3["히스토리 누적"]
     end
 
-    subgraph High["🟡 High - 중기 개선"]
-        H1["시맨틱 라우팅 동기 호출"]
-        H2["RAG 인덱싱 동기 처리"]
-        H3["벡터 검색 캐싱 없음"]
+    subgraph High["🟡 High"]
+        H1["시맨틱 라우팅"] ~~~ H2["RAG 인덱싱"] ~~~ H3["캐싱 없음"]
     end
 
-    subgraph Medium["🔵 Medium - 장기 개선"]
-        M1["세션 정리 수동"]
-        M2["배치 병렬도 낮음"]
+    subgraph Medium["🔵 Medium"]
+        M1["세션 정리"] ~~~ M2["배치 병렬도"]
     end
+
+    Critical ~~~ High ~~~ Medium
 ```
 
 ## 최적화 전략 1: Pre-Analysis
@@ -175,26 +172,11 @@ flowchart LR
 ### 3단계 캐싱
 
 ```mermaid
-flowchart TB
-    subgraph L1["L1: 메모리 캐시 (Caffeine)"]
-        E1["임베딩 캐시"]
-        E2["세션 캐시"]
-        E3["사용자 선호도"]
-    end
-
-    subgraph L2["L2: 시맨틱 캐시"]
-        S1["유사 쿼리 결과"]
-        S2["JQL 변환 결과"]
-    end
-
-    subgraph L3["L3: 벡터 검색 캐시"]
-        V1["Qdrant 쿼리 결과"]
-    end
-
-    Query["쿼리"] --> L1
-    L1 -->|miss| L2
-    L2 -->|miss| L3
-    L3 -->|miss| LLM["LLM 호출"]
+flowchart LR
+    Query["쿼리"] --> L1["L1: 메모리"]
+    L1 -->|miss| L2["L2: 시맨틱"]
+    L2 -->|miss| L3["L3: 벡터"]
+    L3 -->|miss| LLM["LLM"]
 
     style L1 fill:#E8F5E9
     style L2 fill:#FFF3E0

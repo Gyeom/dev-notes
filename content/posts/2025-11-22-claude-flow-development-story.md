@@ -24,23 +24,15 @@ summary: "Claude Code Max의 무제한 사용을 팀에 공유하고, 로컬 우
 ```mermaid
 flowchart LR
     subgraph Foundation["기초 개념"]
-        F1["AI Agent"]
-        F2["RAG"]
-        F3["Context Engineering"]
+        F1["AI Agent"] ~~~ F2["RAG"] ~~~ F3["Context Engineering"]
     end
 
     subgraph Implementation["구현"]
-        I1["세션 관리"]
-        I2["라우팅"]
-        I3["피드백 학습"]
-        I4["코드 임베딩"]
-        I5["컨텍스트 증강"]
-        I6["성능 최적화"]
+        I1["세션 관리"] ~~~ I2["라우팅"] ~~~ I3["피드백"]
+        I4["임베딩"] ~~~ I5["증강"] ~~~ I6["최적화"]
     end
 
-    F1 --> I2 & I3 & I6
-    F2 --> I2 & I4
-    F3 --> I1 & I5
+    Foundation ~~~ Implementation
 
     style Foundation fill:#E8F5E9
     style Implementation fill:#E3F2FD

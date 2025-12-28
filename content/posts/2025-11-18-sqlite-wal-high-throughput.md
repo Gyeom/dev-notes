@@ -31,23 +31,18 @@ AI 에이전트 플랫폼에서 실행 이력, 피드백, 분석 데이터를 �
 ```mermaid
 flowchart LR
     subgraph Rollback["기본 모드 (Rollback Journal)"]
-        direction TB
-        R1[쓰기 시작] --> R2[전체 DB Lock]
-        R2 --> R3[읽기 대기]
-        R3 --> R4[쓰기 완료]
-        R4 --> R5[Lock 해제]
+        R1[쓰기 시작] --> R2[전체 DB Lock] --> R3[읽기 대기] --> R4[쓰기 완료]
     end
 
     subgraph WAL["WAL 모드"]
-        direction TB
-        W1[쓰기 시작] --> W2[WAL 파일에 기록]
-        W3[읽기 요청] --> W4[DB + WAL 읽기]
-        W2 -.->|동시 진행| W4
+        W1[쓰기] --> W2[WAL 기록]
+        W3[읽기] ~~~ W2
     end
+
+    Rollback ~~~ WAL
 
     style R2 fill:#FFCDD2
     style W2 fill:#C8E6C9
-    style W4 fill:#C8E6C9
 ```
 
 > WAL provides more concurrency as readers do not block writers and a writer does not block readers. Reading and writing can proceed concurrently. — [SQLite WAL](https://sqlite.org/wal.html)
@@ -102,31 +97,21 @@ PRAGMA busy_timeout=5000;
 SQLite를 직접 다루는 대신 Repository 패턴으로 추상화했다. SQL을 비즈니스 로직에서 분리하면 테스트와 유지보수가 쉬워진다.
 
 ```mermaid
-flowchart TB
-    subgraph Domain["도메인 레이어"]
+flowchart LR
+    subgraph Domain["도메인"]
         S[Service]
     end
 
-    subgraph Repository["Repository 레이어"]
-        ER[ExecutionRepository]
-        FR[FeedbackRepository]
-        AR[AnalyticsRepository]
+    subgraph Repository["Repository"]
+        ER[Execution] ~~~ FR[Feedback] ~~~ AR[Analytics]
     end
 
-    subgraph Infra["인프라 레이어"]
-        QB[QueryBuilder]
-        CP[ConnectionProvider]
-        DB[(SQLite WAL)]
+    subgraph Infra["인프라"]
+        QB[QueryBuilder] --> CP[ConnectionProvider] --> DB[(SQLite WAL)]
     end
 
-    S --> ER
-    S --> FR
-    S --> AR
-    ER --> QB
-    FR --> QB
-    AR --> QB
-    QB --> CP
-    CP --> DB
+    S --> Repository
+    Repository --> QB
 
     style DB fill:#E3F2FD
 ```

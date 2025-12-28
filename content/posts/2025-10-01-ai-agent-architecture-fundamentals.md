@@ -54,25 +54,16 @@ Anthropic의 에이전트 가이드에 따르면, 에이전트는 **세 가지 �
 > — [Anthropic Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Core["AI Agent 핵심 구성"]
-        LLM["🧠 LLM (두뇌)"]
-        Tools["🔧 Tools (손)"]
-        Memory["💾 Memory (기억)"]
-        Planning["📋 Planning (계획)"]
+        LLM["🧠 LLM"] ~~~ Tools["🔧 Tools"] ~~~ Memory["💾 Memory"] ~~~ Planning["📋 Planning"]
     end
 
     subgraph External["외부 연동"]
-        API["REST API"]
-        DB["Database"]
-        FS["File System"]
-        CLI["CLI Tools"]
+        API["REST API"] ~~~ DB["Database"] ~~~ FS["File System"] ~~~ CLI["CLI Tools"]
     end
 
-    LLM --> Planning
-    Planning --> Tools
-    Tools --> API & DB & FS & CLI
-    Memory --> LLM
+    Core --> External
 
     style LLM fill:#E3F2FD
     style Tools fill:#E8F5E9
@@ -125,21 +116,17 @@ flowchart LR
 에이전트가 컨텍스트를 유지하고 학습하는 메커니즘이다.
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph ShortTerm["단기 기억"]
-        ST1["대화 히스토리"]
-        ST2["현재 작업 상태"]
-        ST3["중간 결과"]
+        ST1["히스토리"] ~~~ ST2["작업 상태"] ~~~ ST3["중간 결과"]
     end
 
     subgraph LongTerm["장기 기억"]
-        LT1["사용자 선호도"]
-        LT2["과거 성공/실패 패턴"]
-        LT3["도메인 지식 (RAG)"]
+        LT1["선호도"] ~~~ LT2["패턴"] ~~~ LT3["RAG"]
     end
 
-    User["사용자 요청"] --> ShortTerm
-    ShortTerm --> LLM["LLM"]
+    User["요청"] --> ShortTerm
+    ShortTerm --> LLM
     LongTerm --> LLM
 
     style ShortTerm fill:#E3F2FD
@@ -237,28 +224,16 @@ flowchart TB
 > — [Microsoft AutoGen Paper](https://arxiv.org/abs/2308.08155)
 
 ```mermaid
-flowchart TB
-    subgraph Orchestrator["🎯 Orchestrator"]
-        O["작업 분배 및 조율"]
-    end
+flowchart LR
+    O["🎯 Orchestrator"] --> S1["🔍 Researcher"]
+    O --> S2["💻 Coder"]
+    O --> S3["✅ Reviewer"]
+    O --> S4["📝 Writer"]
 
-    subgraph Specialists["전문 에이전트"]
-        S1["🔍 Researcher"]
-        S2["💻 Coder"]
-        S3["✅ Reviewer"]
-        S4["📝 Writer"]
-    end
+    S1 & S2 & S3 & S4 --> M["Memory"]
+    S1 & S2 & S3 & S4 --> T["Tools"]
 
-    subgraph Shared["공유 자원"]
-        M["Memory"]
-        T["Tools"]
-    end
-
-    O --> S1 & S2 & S3 & S4
-    S1 & S2 & S3 & S4 --> M & T
-
-    style Orchestrator fill:#FCE4EC
-    style Specialists fill:#E8F5E9
+    style O fill:#FCE4EC
 ```
 
 **협업 패턴:**

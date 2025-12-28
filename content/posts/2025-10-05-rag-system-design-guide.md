@@ -87,26 +87,24 @@ flowchart TB
 ### 청킹 전략
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Fixed["고정 크기"]
-        F1["500자씩 분할"]
-        F2["단순하지만<br/>문맥 손실"]
+        F1["500자 분할"] ~~~ F2["문맥 손실"]
     end
 
     subgraph Recursive["재귀적"]
-        R1["문단 → 문장 → 단어"]
-        R2["구조 유지"]
+        R1["문단→문장→단어"] ~~~ R2["구조 유지"]
     end
 
     subgraph Semantic["시맨틱"]
-        S1["의미 단위 분할"]
-        S2["임베딩 유사도 활용"]
+        S1["의미 단위"] ~~~ S2["임베딩 활용"]
     end
 
     subgraph CodeAware["코드 인식"]
-        C1["함수/클래스 단위"]
-        C2["AST 활용"]
+        C1["함수/클래스"] ~~~ C2["AST"]
     end
+
+    Fixed ~~~ Recursive ~~~ Semantic ~~~ CodeAware
 
     style Semantic fill:#E8F5E9
     style CodeAware fill:#E3F2FD
@@ -136,24 +134,12 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    subgraph Text["텍스트"]
-        T1["'고양이가 잔다'"]
-        T2["'강아지가 잔다'"]
-        T3["'자동차가 달린다'"]
-    end
-
-    subgraph Vector["벡터 공간"]
-        V1["[0.8, 0.2, ...]"]
-        V2["[0.7, 0.3, ...]"]
-        V3["[0.1, 0.9, ...]"]
-    end
-
-    T1 --> V1
-    T2 --> V2
-    T3 --> V3
+    T1["'고양이가 잔다'"] --> V1["[0.8, 0.2]"]
+    T2["'강아지가 잔다'"] --> V2["[0.7, 0.3]"]
+    T3["'자동차가 달린다'"] --> V3["[0.1, 0.9]"]
 
     V1 -.->|유사| V2
-    V3 -.->|거리 멈| V1
+    V3 -.->|거리 멀음| V1
 
     style V1 fill:#E3F2FD
     style V2 fill:#E3F2FD
@@ -207,11 +193,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    subgraph Metrics["유사도 측정 방식"]
-        M1["Cosine Similarity<br/>방향 유사도"]
-        M2["Euclidean Distance<br/>절대 거리"]
-        M3["Dot Product<br/>크기 + 방향"]
-    end
+    M1["Cosine<br/>방향"] ~~~ M2["Euclidean<br/>거리"] ~~~ M3["Dot Product<br/>크기+방향"]
 
     style M1 fill:#E8F5E9
 ```
@@ -240,14 +222,14 @@ flowchart LR
 **하이브리드 검색:**
 
 ```mermaid
-flowchart TB
-    Q["질문"] --> V["벡터 검색<br/>(시맨틱)"]
-    Q --> K["키워드 검색<br/>(정확)"]
+flowchart LR
+    Q["질문"] --> V["벡터 검색"]
+    Q --> K["키워드 검색"]
 
     V --> R["Re-ranking"]
     K --> R
 
-    R --> Top["Top-K 결과"]
+    R --> Top["Top-K"]
 
     style R fill:#FFF3E0
 ```
