@@ -64,21 +64,17 @@ SFT만으로는 한계가 있다. 같은 질문에 여러 "좋은" 응답이 있
 RLHF는 두 단계로 구성된다.
 
 ```mermaid
-flowchart TB
-    subgraph Phase1["Phase 1: Reward Model 학습"]
-        A["(응답A, 응답B)"] --> B["인간 평가자"]
-        B --> C["A > B 선호 데이터"]
-        C --> D["Reward Model"]
+flowchart LR
+    subgraph Phase1["Phase 1: Reward Model"]
+        A["(응답A, 응답B)"] --> B["인간 평가"] --> C["선호 데이터"] --> D["Reward Model"]
     end
 
-    subgraph Phase2["Phase 2: RL Policy 학습"]
-        D --> E["응답 생성"]
-        E --> F["Reward 점수"]
-        F --> G["PPO 최적화"]
-        G --> E
+    subgraph Phase2["Phase 2: RL Policy"]
+        E["응답 생성"] --> F["Reward"] --> G["PPO"] --> E
     end
 
-    Phase1 --> Phase2
+    D --> E
+    Phase1 ~~~ Phase2
 
     style D fill:#FFE082
     style G fill:#A5D6A7
@@ -273,14 +269,13 @@ principles:
 ## 정리
 
 ```mermaid
-flowchart TB
-    subgraph Training["모델 학습 (Fine-tuning 가능 시)"]
+flowchart LR
+    subgraph Training["Fine-tuning 가능"]
         A["SFT"] --> B["RLHF / DPO"]
     end
 
-    subgraph Prompting["프롬프트 엔지니어링 (API 환경)"]
-        C["Few-shot"] --> D["Anti-pattern"]
-        D --> E["Constitutional AI"]
+    subgraph Prompting["API 환경"]
+        C["Few-shot"] --> D["Anti-pattern"] --> E["Constitutional AI"]
     end
 
     Training -.->|"불가능 시"| Prompting

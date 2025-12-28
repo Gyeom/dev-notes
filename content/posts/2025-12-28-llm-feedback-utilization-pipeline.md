@@ -251,10 +251,10 @@ data class TrainingPair(
 ### 활용 경로
 
 ```mermaid
-flowchart TB
-    A["Gold Standard"] --> B["Few-shot 예제<br/>(즉시 적용)"]
-    A --> C["학습 데이터 쌍<br/>(Fine-tuning 대비)"]
-    A --> D["System Prompt 개선<br/>(수동 분석)"]
+flowchart LR
+    A["Gold Standard"] --> B["Few-shot 예제<br/>(즉시)"]
+    A --> C["학습 데이터<br/>(Fine-tuning)"]
+    A --> D["System Prompt<br/>(수동)"]
 
     style B fill:#90EE90
     style C fill:#87CEEB
@@ -352,33 +352,19 @@ fun getSimilarQueryRecommendation(
 모든 활용 방법을 하나의 파이프라인으로 통합한다.
 
 ```mermaid
-flowchart TB
-    A["사용자 질문"] --> B["Context Augmentation"]
+flowchart LR
+    A["질문"] --> B["Augmentation"]
 
-    subgraph Aug["Augmentation Pipeline"]
-        B --> C["Few-shot 예제 검색"]
-        B --> D["Anti-pattern 경고 생성"]
-        B --> E["Constitutional 원칙"]
+    subgraph Aug["Context 증강"]
+        B1["Few-shot"] ~~~ B2["Anti-pattern"] ~~~ B3["Constitutional"]
     end
 
-    C --> F["Augmented Prompt"]
-    D --> F
-    E --> F
+    B --> Aug --> C["에이전트 선택"] --> D["Claude"] --> E["응답"] --> F["피드백"]
+    F -.-> A
 
-    F --> G["에이전트 선택"]
-    G --> H{"피드백 학습<br/>confidence ≥ 0.8?"}
-    H -->|Yes| I["추천 에이전트"]
-    H -->|No| J["기본 라우팅"]
-
-    I --> K["Claude 호출"]
-    J --> K
-    K --> L["응답"]
-    L --> M["피드백 수집"]
-    M --> A
-
-    style C fill:#90EE90
-    style D fill:#FFB6C1
-    style E fill:#87CEEB
+    style B1 fill:#90EE90
+    style B2 fill:#FFB6C1
+    style B3 fill:#87CEEB
 ```
 
 ### 구현 예시
