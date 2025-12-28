@@ -21,3 +21,6 @@ hugo.deb
 
 # 면접 자료 (로컬 전용)
 interview/
+
+# Private 문서 (별도 레포지토리 관리)
+temp/
