@@ -93,6 +93,10 @@ buildExpired = false
   filename = "sitemap.xml"
   priority = 0.5
 
+# Minify 설정 - XML(sitemap)은 줄바꿈 유지 (Google Search Console 호환성)
+[minify]
+  disableXML = true
+
 # RSS 설정
 [services.rss]
   limit = 20
