@@ -126,13 +126,14 @@ DPO는 RLHF의 두 단계를 하나로 합친다. Reward Model을 명시적으�
 ```mermaid
 flowchart LR
     subgraph RLHF["RLHF (2단계)"]
-        A1["선호 데이터"] --> B1["Reward Model"]
-        B1 --> C1["PPO 학습"]
+        A1["선호 데이터"] --> B1["Reward Model"] --> C1["PPO 학습"]
     end
 
     subgraph DPO["DPO (1단계)"]
         A2["선호 데이터"] --> B2["직접 최적화"]
     end
+
+    RLHF ~~~ DPO
 
     style B1 fill:#FFE082
     style C1 fill:#FFE082
