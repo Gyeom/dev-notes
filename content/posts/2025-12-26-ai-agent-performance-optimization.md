@@ -7,7 +7,7 @@ categories: ["Architecture"]
 summary: "LLM 호출 최적화, Pre-analysis, 캐싱 전략으로 AI 에이전트의 응답 시간을 절반으로 줄인다"
 ---
 
-> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
+> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)와 [설계기](/dev-notes/posts/2025-12-28-claude-flow-ai-agent-platform/)에서 확인할 수 있다.
 >
 > **관련 개념**: [AI Agent 아키텍처의 이해](/dev-notes/posts/2025-10-01-ai-agent-architecture-fundamentals/) - AI 에이전트의 구성 요소와 설계 원칙
 
@@ -85,18 +85,13 @@ sequenceDiagram
 AI가 할 일과 규칙으로 처리할 일을 분리한다.
 
 ```mermaid
-flowchart TB
-    subgraph Pass1["Pass 1: 규칙 기반 분석 (API)"]
-        direction LR
-        A["GitLab API 호출"] --> B["파일 분류"]
-        B --> C["보안 패턴 탐지"]
-        C --> D["Breaking Change 감지"]
+flowchart LR
+    subgraph Pass1["Pass 1: 규칙 기반 (API)"]
+        A["GitLab API"] --> B["파일 분류"] --> C["패턴 탐지"]
     end
 
-    subgraph Pass2["Pass 2: AI 분석 (Claude)"]
-        direction LR
-        E["Pre-analyzed 데이터"] --> F["심층 리뷰"]
-        F --> G["리뷰 결과"]
+    subgraph Pass2["Pass 2: AI 분석"]
+        D["Pre-analyzed"] --> E["심층 리뷰"] --> F["결과"]
     end
 
     Pass1 --> Pass2

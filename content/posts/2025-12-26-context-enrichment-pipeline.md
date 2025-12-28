@@ -7,7 +7,7 @@ categories: ["Architecture"]
 summary: "사용자 프롬프트에 프로젝트 정보, 도메인 지식을 자동 주입하는 파이프라인을 Chain of Responsibility 패턴으로 구현한다"
 ---
 
-> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
+> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)와 [설계기](/dev-notes/posts/2025-12-28-claude-flow-ai-agent-platform/)에서 확인할 수 있다.
 >
 > **관련 개념**: [Context Engineering의 이해](/dev-notes/posts/2025-10-10-context-engineering-fundamentals/) - Context Enrichment가 왜 중요한지
 
@@ -37,24 +37,18 @@ flowchart LR
 사용자 프롬프트가 Claude에게 전달되기 전에 **자동으로 컨텍스트를 주입**하는 파이프라인을 구축한다.
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Input["입력"]
-        Prompt["사용자 프롬프트"]
-        Meta["메타데이터<br/>(userId, channelId)"]
+        Prompt["프롬프트"]
+        Meta["메타데이터"]
     end
 
-    subgraph Pipeline["ContextEnrichmentPipeline"]
-        direction TB
-        E1["ProjectContextEnricher<br/>(priority: 10)"]
-        E2["DomainKnowledgeEnricher<br/>(priority: 20)"]
-        E3["UserRuleEnricher<br/>(priority: 30)"]
-        E1 --> E2 --> E3
+    subgraph Pipeline["Pipeline"]
+        E1["Project"] --> E2["Domain"] --> E3["User"]
     end
 
     subgraph Output["출력"]
         Enriched["증강된 프롬프트"]
-        WorkDir["작업 디렉토리"]
-        Logs["처리 로그"]
     end
 
     Input --> Pipeline --> Output

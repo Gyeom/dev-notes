@@ -157,6 +157,40 @@ flowchart LR
     style Server fill:#fff3e0
 ```
 
+### subgraph 배치 규칙 (중요!)
+
+**2-3개 subgraph 비교 시 반드시 `flowchart LR` 사용**
+
+```mermaid
+%% ❌ TB + 2개 subgraph = 세로로 길어져 공백 낭비
+flowchart TB
+    subgraph A["방식 A"]
+        A1 --> A2
+    end
+    subgraph B["방식 B"]
+        B1 --> B2
+    end
+    A --> B
+```
+
+```mermaid
+%% ✅ LR + 2개 subgraph = 가로로 컴팩트
+flowchart LR
+    subgraph A["방식 A"]
+        A1 --> A2
+    end
+    subgraph B["방식 B"]
+        B1 --> B2
+    end
+    A --> B
+```
+
+| subgraph 수 | 권장 방향 |
+|-------------|----------|
+| 2-3개 (비교) | `LR` |
+| 4개 이상 (아키텍처) | `TB` |
+| 계층 구조 (캐시, 레이어) | `TB` |
+
 ### 화살표 스타일
 
 | 패턴 | 사용처 |

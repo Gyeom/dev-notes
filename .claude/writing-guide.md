@@ -85,6 +85,51 @@ flowchart LR
 - `sequenceDiagram`: 시간순 상호작용
 - `pie`: 비율, 분포
 
+### Mermaid 레이아웃 규칙 (중요!)
+
+**기본 원칙: 가로 우선 (`flowchart LR`)**
+
+세로 배치(`TB`)는 공백이 많이 생겨 가독성이 떨어진다. 특히 subgraph가 2-3개일 때 문제가 심하다.
+
+| 상황 | 방향 | 이유 |
+|------|------|------|
+| subgraph 2-3개 비교 | `LR` | 가로 배치로 공백 최소화 |
+| 단순 순서도 (5개 이하) | `LR` | 한 줄에 표시 |
+| 복잡한 아키텍처 (4+ subgraph) | `TB` | 세로가 더 읽기 쉬움 |
+| 계층 구조 (캐시, 레이어) | `TB` | 위→아래 흐름이 자연스러움 |
+
+**❌ 피해야 할 패턴**
+```mermaid
+flowchart TB
+    subgraph A["첫 번째"]
+        A1 --> A2
+    end
+    subgraph B["두 번째"]
+        B1 --> B2
+    end
+    A --> B
+```
+→ 두 subgraph가 세로로 나열되어 공백 낭비
+
+**✅ 권장 패턴**
+```mermaid
+flowchart LR
+    subgraph A["첫 번째"]
+        A1 --> A2
+    end
+    subgraph B["두 번째"]
+        B1 --> B2
+    end
+    A --> B
+```
+→ 가로 배치로 컴팩트하게 표시
+
+**긴 순서도는 텍스트 축약**
+```
+❌ A["📢 장애 알람<br/>(Sentry, DataDog)"] --> B["🤖 Claude 분석<br/>(프로젝트, 심각도)"]
+✅ A["📢 장애 알람"] --> B["🤖 분석"] --> C["💬 알림"]
+```
+
 ### 인용문으로 권위 부여
 ```markdown
 > "The first rule of optimization is: don't do it."
