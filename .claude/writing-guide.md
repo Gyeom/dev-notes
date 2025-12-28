@@ -56,6 +56,80 @@ summary: "한 줄 요약"
 - 주석은 최소화, 코드가 스스로 설명하도록
 - 긴 출력은 생략 (...으로 표시)
 
+## 코드와 설명의 균형 (중요!)
+
+### 핵심 원칙
+**코드보다 개념 설명, 다이어그램, 인용문을 우선한다.** 독자가 "왜"를 이해하면 코드는 스스로 읽을 수 있다.
+
+### 코드 블록 사용 기준
+- ✅ **핵심 인터페이스/API**: 독자가 직접 구현할 때 참고할 코드
+- ✅ **10줄 이하 핵심 로직**: 글로 설명하기 어려운 알고리즘
+- ❌ **구현 세부사항**: Spring Config, DTO, 반복적인 CRUD
+- ❌ **긴 코드 블록**: 30줄 이상은 GitHub 링크로 대체
+
+### 대안 활용
+| 상황 | 코드 대신 |
+|------|----------|
+| 흐름 설명 | Mermaid 다이어그램 |
+| 개념 소개 | 인용문 + 설명 |
+| 비교/분류 | 테이블 |
+| 단계별 처리 | 번호 목록 |
+
+### 다이어그램 적극 활용
+```mermaid
+flowchart LR
+    A["문제"] --> B["해결책"]
+    B --> C["효과"]
+```
+- `flowchart`: 흐름, 아키텍처
+- `sequenceDiagram`: 시간순 상호작용
+- `pie`: 비율, 분포
+
+### 인용문으로 권위 부여
+```markdown
+> "The first rule of optimization is: don't do it."
+> — Michael A. Jackson
+```
+- 원칙을 설명할 때 저명한 출처 인용
+- 공식 문서, 논문, 저명한 개발자 글 활용
+
+### 좋은 예시 vs 나쁜 예시
+
+**❌ 코드 중심 (피해야 함)**
+```kotlin
+class ContextEnrichmentPipeline(enrichers: List<ContextEnricher>) {
+    private val sorted = enrichers.sortedBy { it.priority }
+    suspend fun enrich(ctx: EnrichmentContext): EnrichmentContext {
+        var current = ctx
+        for (e in sorted) {
+            if (e.shouldEnrich(current)) {
+                current = e.enrich(current)
+            }
+        }
+        return current
+    }
+}
+```
+
+**✅ 설명 중심 (권장)**
+> Chain of Responsibility 패턴으로 각 Enricher가 독립적으로 동작한다.
+
+파이프라인은 priority 순으로 Enricher를 실행한다. 한 Enricher가 실패해도 다음은 계속 실행된다.
+
+```mermaid
+flowchart LR
+    A["Enricher 1"] --> B["Enricher 2"] --> C["Enricher 3"]
+```
+
+**핵심 인터페이스만 코드로 제시한다.**
+```kotlin
+interface ContextEnricher {
+    val priority: Int
+    fun shouldEnrich(ctx: EnrichmentContext): Boolean
+    suspend fun enrich(ctx: EnrichmentContext): EnrichmentContext
+}
+```
+
 ## 태그 컨벤션
 
 ### 기술 태그
