@@ -87,6 +87,11 @@ flowchart LR
 
 ### Mermaid 레이아웃 규칙 (중요!)
 
+**⚠️ 작성 전 체크리스트**
+- [ ] `flowchart LR` 사용했는가? (TB는 4+ subgraph일 때만)
+- [ ] subgraph가 2개 이상이면 `~~~`로 연결했는가?
+- [ ] subgraph 내부 노드들이 `-->`나 `~~~`로 연결되었는가?
+
 **기본 원칙: 가로 우선 (`flowchart LR`)**
 
 세로 배치(`TB`)는 공백이 많이 생겨 가독성이 떨어진다. 특히 subgraph가 2-3개일 때 문제가 심하다.
@@ -119,6 +124,18 @@ flowchart LR
     end
 ```
 → LR이어도 노드가 연결 없이 나열되면 **세로로 쌓임**
+
+**❌ 피해야 할 패턴 3: subgraph 간 연결 없음**
+```mermaid
+flowchart LR
+    subgraph A["RLHF"]
+        A1 --> A2
+    end
+    subgraph B["DPO"]
+        B1 --> B2
+    end
+```
+→ flowchart LR이어도 **subgraph 간 연결이 없으면 세로로 쌓임**
 
 **✅ 권장 패턴**
 ```mermaid
