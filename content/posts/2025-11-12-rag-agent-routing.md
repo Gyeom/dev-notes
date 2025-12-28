@@ -7,7 +7,7 @@ categories: ["아키텍처"]
 summary: "Qdrant 벡터 데이터베이스와 Ollama 임베딩을 활용한 RAG 파이프라인으로 에이전트 라우팅 정확도를 개선한 과정"
 ---
 
-> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
+> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)와 [설계기](/dev-notes/posts/2025-12-28-claude-flow-ai-agent-platform/)에서 확인할 수 있다.
 >
 > **관련 개념**: [RAG 시스템 설계 가이드](/dev-notes/posts/2025-10-05-rag-system-design-guide/) - 벡터 검색, 임베딩, Re-ranking의 원리
 

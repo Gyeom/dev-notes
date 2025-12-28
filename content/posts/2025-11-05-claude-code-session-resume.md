@@ -7,7 +7,7 @@ categories: ["AI Development"]
 summary: "Claude Code의 --resume 옵션과 세션 관리로 토큰 비용을 대폭 줄이는 방법. 프롬프트 캐싱의 원리와 실제 구현 패턴을 알아본다."
 ---
 
-> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
+> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)와 [설계기](/dev-notes/posts/2025-12-28-claude-flow-ai-agent-platform/)에서 확인할 수 있다.
 >
 > **관련 개념**: [Context Engineering의 이해](/dev-notes/posts/2025-10-10-context-engineering-fundamentals/) - 프롬프트 캐싱이 Context Engineering에서 어떤 역할을 하는지
 

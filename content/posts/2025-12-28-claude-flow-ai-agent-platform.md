@@ -74,14 +74,14 @@ Storage:   SQLite (WAL mode)
 ```mermaid
 flowchart LR
     subgraph SaaS["☁️ SaaS 방식"]
-        A1["코드"] --> A2["외부 서버"]
-        A2 --> A3["처리"]
+        A1["코드"] --> A2["외부 서버"] --> A3["처리"]
     end
 
     subgraph Local["🏠 로컬 방식"]
-        B1["코드"] --> B2["사내 서버"]
-        B2 --> B3["처리"]
+        B1["코드"] --> B2["사내 서버"] --> B3["처리"]
     end
+
+    SaaS ~~~ Local
 
     style SaaS fill:#ffebee
     style Local fill:#e8f5e9
@@ -185,15 +185,11 @@ MCP를 사용했다면 Claude CLI 프로세스 내에서만 동작하지만, RES
 ```mermaid
 flowchart LR
     subgraph Workflow["n8n 워크플로우"]
-        N1["이벤트 처리"]
-        N2["장애 알람"]
-        N3["정기 MR 리뷰"]
+        N1["이벤트 처리"] ~~~ N2["장애 알람"] ~~~ N3["정기 MR 리뷰"]
     end
 
     subgraph Code["Kotlin 코드"]
-        K1["비즈니스 로직"]
-        K2["AgentRouter"]
-        K3["Storage"]
+        K1["비즈니스 로직"] ~~~ K2["AgentRouter"] ~~~ K3["Storage"]
     end
 
     Workflow -->|REST API| Code

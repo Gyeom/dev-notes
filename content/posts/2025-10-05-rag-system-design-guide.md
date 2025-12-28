@@ -175,20 +175,16 @@ flowchart LR
 ### 로컬 vs 클라우드
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Cloud["☁️ 클라우드 임베딩"]
-        C1["OpenAI / Cohere"]
-        C2["✅ 고품질"]
-        C3["❌ API 비용"]
-        C4["❌ 데이터 외부 전송"]
+        C1["OpenAI/Cohere<br/>✅ 고품질<br/>❌ API 비용"]
     end
 
     subgraph Local["🏠 로컬 임베딩"]
-        L1["Ollama / HuggingFace"]
-        L2["✅ 비용 없음"]
-        L3["✅ 데이터 보안"]
-        L4["⚠️ GPU 필요"]
+        L1["Ollama/HuggingFace<br/>✅ 비용 없음, 보안<br/>⚠️ GPU 필요"]
     end
+
+    Cloud ~~~ Local
 
     style Cloud fill:#E3F2FD
     style Local fill:#E8F5E9

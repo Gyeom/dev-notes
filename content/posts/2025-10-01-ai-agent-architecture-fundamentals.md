@@ -282,14 +282,14 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph Bad["❌ 과도한 권한"]
-        B1["모든 도구 제공"]
-        B2["무제한 실행"]
+        B1["모든 도구 제공"] ~~~ B2["무제한 실행"]
     end
 
     subgraph Good["✅ 최소 권한"]
-        G1["작업별 도구 제한"]
-        G2["승인 필요 액션"]
+        G1["작업별 도구 제한"] ~~~ G2["승인 필요 액션"]
     end
+
+    Bad ~~~ Good
 
     style Bad fill:#FFEBEE
     style Good fill:#E8F5E9

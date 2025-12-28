@@ -137,8 +137,7 @@ flowchart LR
     end
 
     subgraph After["개선 후"]
-        B["시스템 프롬프트<br/>캐싱"]
-        C["사용자 쿼리만<br/>~200 토큰"]
+        B["시스템 프롬프트 캐싱<br/>+ 사용자 쿼리 ~200 토큰"]
     end
 
     Before --> After
@@ -251,10 +250,10 @@ flowchart LR
     end
 
     subgraph After["스트리밍"]
-        B["0.5초 후 첫 토큰"]
-        C["점진적 업데이트"]
-        D["8초 후 완료"]
+        B["0.5초 후 첫 토큰"] --> C["점진적 업데이트"] --> D["8초 후 완료"]
     end
+
+    Before ~~~ After
 
     style Before fill:#FFEBEE
     style After fill:#E8F5E9
