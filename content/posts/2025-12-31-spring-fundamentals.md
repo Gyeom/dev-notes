@@ -311,48 +311,91 @@ public void process() throws Exception { }
 
 ### 각 Isolation Level 동작
 
-**READ UNCOMMITTED**
-- 커밋되지 않은 데이터도 읽을 수 있다
-- 데이터 정합성은 떨어지지만 성능 극대화
+```mermaid
+flowchart LR
+    A["READ<br/>UNCOMMITTED"] --> B["READ<br/>COMMITTED"]
+    B --> C["REPEATABLE<br/>READ"]
+    C --> D["SERIALIZABLE"]
 
-**READ COMMITTED**
-- 다른 트랜잭션이 커밋한 데이터만 읽는다
-- 같은 쿼리를 두 번 실행하면 값이 달라질 수 있다 (여러 스냅샷 버전으로 읽기 가능)
+    style A fill:#ffcccc
+    style B fill:#ffffcc
+    style C fill:#ccffcc
+    style D fill:#ccccff
+```
 
-**REPEATABLE READ**
-- 트랜잭션 시작 시점의 스냅샷을 생성한다
-- 트랜잭션 내에서는 항상 동일한 스냅샷을 읽는다
-- T1 트랜잭션 도중에 T2가 업데이트해도 T1은 기존 값을 읽는다
-
-**SERIALIZABLE**
-- 트랜잭션을 순차적으로 실행한다
-- T1이 커밋하기 전에는 T2가 진행되지 않는다
-- 동시성이 크게 떨어진다
+| 레벨 | 동작 | 트레이드오프 |
+|------|------|-------------|
+| READ UNCOMMITTED | 커밋 전 데이터도 읽음 | 정합성↓ 성능↑ |
+| READ COMMITTED | 커밋된 데이터만 읽음 | 여러 스냅샷 버전 가능 |
+| REPEATABLE READ | 트랜잭션 시작 시점 스냅샷 유지 | 단일 스냅샷 |
+| SERIALIZABLE | 순차 실행 | 정합성↑ 동시성↓ |
 
 ### READ COMMITTED vs REPEATABLE READ
 
+```mermaid
+flowchart LR
+    subgraph RC["READ COMMITTED"]
+        RC1["SELECT → A=1"] --> RC2["T2: UPDATE, COMMIT"]
+        RC2 --> RC3["SELECT → A=2"]
+    end
+    subgraph RR["REPEATABLE READ"]
+        RR1["SELECT → A=1"] --> RR2["T2: UPDATE, COMMIT"]
+        RR2 --> RR3["SELECT → A=1"]
+    end
+    RC ~~~ RR
+```
+
 | 구분 | READ COMMITTED | REPEATABLE READ |
 |------|---------------|-----------------|
-| 스냅샷 | 여러 버전 읽기 가능 | 단일 버전만 읽기 |
+| 스냅샷 | 매 쿼리마다 최신 스냅샷 | 트랜잭션 시작 시점 스냅샷 고정 |
 | 같은 쿼리 2번 | 값이 다를 수 있음 | 항상 동일 |
 | 사용 시점 | 최신 커밋 데이터 필요 시 | 트랜잭션 내 일관성 필요 시 |
 
 ### READ Phenomena (읽기 이상 현상)
 
-**Dirty Read**
-- 커밋되지 않은 데이터를 읽는 현상
-- READ UNCOMMITTED에서 발생
-- T1이 롤백하면 T2가 읽은 데이터는 무효가 된다
+**Dirty Read** - 커밋되지 않은 데이터를 읽는 현상
 
-**Non-Repeatable Read**
-- 한 트랜잭션 내에서 같은 쿼리가 다른 값을 반환하는 현상
-- 다른 트랜잭션의 **UPDATE**로 발생
-- READ COMMITTED 이하에서 발생
+```mermaid
+sequenceDiagram
+    participant T1
+    participant DB
+    participant T2
+    T1->>DB: UPDATE A=2 (원래 1)
+    T2->>DB: SELECT A
+    DB-->>T2: A=2 (커밋 전 데이터)
+    T1->>DB: ROLLBACK
+    Note over T2: T2가 읽은 A=2는 무효!
+```
 
-**Phantom Read**
-- 한 트랜잭션 내에서 없던 행이 나타나는 현상
-- 다른 트랜잭션의 **INSERT**로 발생
-- REPEATABLE READ 이하에서 발생
+**Non-Repeatable Read** - 같은 쿼리가 다른 값을 반환하는 현상
+
+```mermaid
+sequenceDiagram
+    participant T1
+    participant DB
+    participant T2
+    T1->>DB: SELECT A
+    DB-->>T1: A=1
+    T2->>DB: UPDATE A=2
+    T2->>DB: COMMIT
+    T1->>DB: SELECT A
+    DB-->>T1: A=2 (값이 변경됨!)
+```
+
+**Phantom Read** - 없던 행이 나타나는 현상
+
+```mermaid
+sequenceDiagram
+    participant T1
+    participant DB
+    participant T2
+    T1->>DB: SELECT COUNT(*) WHERE age>20
+    DB-->>T1: 5건
+    T2->>DB: INSERT (age=25)
+    T2->>DB: COMMIT
+    T1->>DB: SELECT COUNT(*) WHERE age>20
+    DB-->>T1: 6건 (유령 행 출현!)
+```
 
 ---
 
