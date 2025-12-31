@@ -175,11 +175,11 @@ flowchart LR
 | 관리 주체 | Servlet Container | Spring Container |
 | 실행 위치 | DispatcherServlet 앞 | DispatcherServlet 뒤 |
 | 접근 범위 | ServletRequest/Response | HttpServletRequest, Handler |
-| 용도 | 인코딩, 보안, 로깅 | 인증/인가, 로깅, 공통 처리 |
+| 용도 | 인코딩, 인증/인가(Spring Security), CORS | 로깅, API 호출 기록, 공통 처리 |
 | Spring Bean | @Component 필요 | HandlerInterceptor 구현 |
 
-**Filter 사용 예시**: 인코딩, XSS 필터링, CORS
-**Interceptor 사용 예시**: 로그인 체크, 권한 검사, 로깅
+**Filter 사용 예시**: 인코딩, Spring Security(인증/인가), XSS 필터링, CORS
+**Interceptor 사용 예시**: API 호출 로깅, 실행 시간 측정, 공통 헤더 처리
 
 ---
 
