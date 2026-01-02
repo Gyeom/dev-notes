@@ -367,6 +367,69 @@ flowchart LR
 
 Filter는 DispatcherServlet 외부에 존재하기 때문에 예외가 발생하면 `ErrorController`에서 처리해야 한다. 반면 Interceptor는 DispatcherServlet 내부에 존재하기 때문에 `@ControllerAdvice`를 적용할 수 있다.
 
+### Filter로 다 하면 안 되나?
+
+**기술적으로 가능하지만, Interceptor가 더 편리한 경우가 있다.**
+
+핵심 차이는 **Handler 정보 접근 여부**다.
+
+```
+Filter:      URL만 안다       →  "/api/users/123/delete"
+Interceptor: Handler를 안다  →  UserController.deleteUser() + @RequireRole("ADMIN")
+```
+
+| 상황 | Filter | Interceptor |
+|------|--------|-------------|
+| 어떤 Controller가 처리하는지 | ❌ 모름 | ✅ `HandlerMethod` 접근 가능 |
+| 메서드 어노테이션 체크 | ❌ URL 매핑 테이블 필요 | ✅ 직접 읽기 가능 |
+| 정적 리소스 제외 | 직접 URL 패턴 처리 | 자동 제외 |
+
+```java
+// Interceptor에서만 가능 - 어노테이션 기반 권한 체크
+@Override
+public boolean preHandle(..., Object handler) {
+    HandlerMethod hm = (HandlerMethod) handler;
+    RequireRole annotation = hm.getMethodAnnotation(RequireRole.class);
+    if (annotation != null) {
+        return hasRole(annotation.value());  // @RequireRole("ADMIN") 체크
+    }
+    return true;
+}
+
+// Filter에서 같은 기능 구현 시 - URL 매핑 테이블 직접 관리 필요
+private static final Map<String, String> URL_ROLE_MAP = Map.of(
+    "/admin/**", "ADMIN",
+    "/api/users/*/delete", "ADMIN"  // URL 변경 시 여기도 수정해야 함
+);
+```
+
+### 실무 사용 패턴
+
+```mermaid
+flowchart LR
+    subgraph Filter["Filter (인프라 레벨)"]
+        F1["TraceId 설정"] ~~~ F2["인증 (Spring Security)"]
+        F2 ~~~ F3["Rate Limiting"]
+    end
+    subgraph Interceptor["Interceptor (비즈니스 레벨)"]
+        I1["API 버전 체크"] ~~~ I2["비즈니스 권한"]
+        I2 ~~~ I3["감사 로그"]
+    end
+    Filter --> Interceptor
+```
+
+| 목적 | 위치 | 이유 |
+|------|------|------|
+| 분산 추적 (TraceId) | Filter | 최대한 빨리 생성 |
+| 인증/인가 | Filter (Spring Security) | Spring 진입 전 차단 |
+| Rate Limiting | Filter | 불필요한 Spring 처리 방지 |
+| API 버전 관리 | Interceptor | `@ApiVersion("v2")` 어노테이션 체크 |
+| 비즈니스 권한 | Interceptor | `@RequireRole("ADMIN")` 체크 |
+| API 메트릭 | Interceptor | Controller/Method 별 집계 |
+| 감사 로그 | Interceptor | 누가 어떤 메서드 호출했는지 |
+
+> **원칙**: 인프라 처리는 Filter, 비즈니스 처리는 Interceptor
+
 ---
 
 ## AOP (Aspect-Oriented Programming)
