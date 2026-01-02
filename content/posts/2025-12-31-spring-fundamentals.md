@@ -70,11 +70,15 @@ flowchart LR
 
 ---
 
-## DI (Dependency Injection)
+## DI / IoC
 
 ### IoC (Inversion of Control)
 
-객체의 생성과 의존성 관리를 개발자가 아닌 컨테이너가 담당한다. 제어의 역전이라 부르는 이유다.
+**제어의 역전**은 프로그램의 제어 흐름을 직접 제어하는 것이 아니라 외부에서 관리하는 것을 의미한다.
+
+### DI (Dependency Injection)
+
+**의존성 주입**은 객체를 직접 생성하는 게 아니라 외부에서 생성한 후 주입 시켜주는 방식이다. DI를 통해 모듈 간 **결합도가 낮아지고 유연성이 높아진다**.
 
 ```mermaid
 flowchart LR
@@ -87,6 +91,34 @@ flowchart LR
     Traditional ~~~ IoC
 ```
 
+### IoC 컨테이너 (ApplicationContext)
+
+IoC 컨테이너는 애플리케이션 실행 시점에 Bean을 인스턴스화하고 DI한 후 애플리케이션을 기동한다.
+
+| 어노테이션 | 역할 |
+|-----------|------|
+| `@Configuration` | 구성 정보를 담당하는 클래스에 선언 |
+| `@Bean` | 메서드 반환 객체를 스프링 컨테이너에 등록 |
+
+```java
+@Configuration
+public class AppConfig {
+    @Bean
+    public OrderService orderService() {
+        return new OrderService(orderRepository());
+    }
+
+    @Bean
+    public OrderRepository orderRepository() {
+        return new OrderRepositoryImpl();
+    }
+}
+
+// Bean 조회
+ApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class);
+OrderService service = ctx.getBean(OrderService.class);
+```
+
 ### 의존성 주입 방식
 
 | 방식 | 특징 | 권장 여부 |
@@ -95,10 +127,24 @@ flowchart LR
 | Setter 주입 | 선택적 의존성, 변경 가능 | 선택적 사용 |
 | 필드 주입 | 테스트 어려움, 순환 참조 숨김 | ❌ 비권장 |
 
+**생성자 주입**
+- 생성자 호출 시점에 **딱 1번만** 호출되는 것을 보장
+- **불변, 필수** 의존관계에 사용
+
+**Setter 주입**
+- **선택, 변경 가능성**이 있는 의존관계에 사용
+- 스프링 빈을 선택적으로 등록 가능
+
+**필드 주입**
+- `@Autowired`를 사용하지만 외부에서 변경 불가능하여 테스트 어려움
+- DI 프레임워크 없이 작동 불가
+- 테스트 코드나 `@Configuration`에서만 제한적 사용
+
 **생성자 주입이 권장되는 이유**
 - 불변성(immutability) 보장
 - 순환 참조를 컴파일 타임에 발견
 - 테스트 시 Mock 주입 용이
+- `final` 키워드로 누락 방지
 
 ```java
 @Service
@@ -210,6 +256,29 @@ flowchart LR
     D --> E["소멸<br/>@PreDestroy"]
 ```
 
+**생명주기 콜백 3가지 방법**
+
+| 방법 | 초기화 | 소멸 | 특징 |
+|------|--------|------|------|
+| 인터페이스 | `InitializingBean.afterPropertiesSet()` | `DisposableBean.destroy()` | 스프링 의존 |
+| 어노테이션 | `@PostConstruct` | `@PreDestroy` | ✅ 권장 |
+| @Bean 속성 | `@Bean(initMethod="init")` | `@Bean(destroyMethod="close")` | 외부 라이브러리용 |
+
+```java
+@Component
+public class ConnectionPool {
+    @PostConstruct
+    public void init() {
+        // 의존성 주입 완료 후 호출
+    }
+
+    @PreDestroy
+    public void close() {
+        // 스프링 컨테이너 종료 전 호출
+    }
+}
+```
+
 ---
 
 ## Autowiring
@@ -289,6 +358,15 @@ flowchart LR
 **Filter 사용 예시**: 인코딩, Spring Security(인증/인가), XSS 필터링, CORS
 **Interceptor 사용 예시**: API 호출 로깅, 실행 시간 측정, 공통 헤더 처리
 
+### 예외 처리 차이
+
+| 구분 | Filter | Interceptor |
+|------|--------|-------------|
+| 예외 발생 시 | `ErrorController`에서 처리 | `@ControllerAdvice`로 처리 가능 |
+| 이유 | DispatcherServlet 외부 | DispatcherServlet 내부 |
+
+Filter는 DispatcherServlet 외부에 존재하기 때문에 예외가 발생하면 `ErrorController`에서 처리해야 한다. 반면 Interceptor는 DispatcherServlet 내부에 존재하기 때문에 `@ControllerAdvice`를 적용할 수 있다.
+
 ---
 
 ## AOP (Aspect-Oriented Programming)
@@ -311,13 +389,49 @@ flowchart LR
 
 ### 주요 용어
 
-| 용어 | 설명 |
-|------|------|
-| Aspect | 횡단 관심사 모듈 (로깅, 트랜잭션 등) |
-| Join Point | Advice가 적용될 수 있는 지점 (메서드 실행) |
-| Pointcut | Join Point를 선별하는 표현식 |
-| Advice | 실제 실행할 로직 (Before, After, Around) |
-| Target | Advice가 적용되는 대상 객체 |
+| 용어 | 설명 | 예시 |
+|------|------|------|
+| Aspect | 횡단 관심사 모듈 | `@Aspect` 클래스 (로깅, 트랜잭션) |
+| Join Point | Advice 적용 가능 지점 | `orderService.createOrder()` 메서드 실행 |
+| Pointcut | Join Point 선별 표현식 | `execution(* com.example.service.*.*(..))` |
+| Advice | 실제 실행할 로직 | `@Before`, `@After`, `@Around` |
+| Target | Advice 적용 대상 객체 | `OrderService` Bean |
+
+```java
+@Aspect  // Aspect: 횡단 관심사 모듈
+@Component
+public class LoggingAspect {
+
+    // Pointcut: Join Point 선별 표현식
+    @Pointcut("execution(* com.example.service.*.*(..))")
+    public void serviceMethods() {}
+
+    // Advice: 실제 실행 로직 (Before - 메서드 실행 전)
+    @Before("serviceMethods()")
+    public void logBefore(JoinPoint joinPoint) {  // JoinPoint: 메서드 실행 지점
+        log.info("호출: {}", joinPoint.getSignature().getName());
+    }
+
+    // Advice: Around - 메서드 실행 전후
+    @Around("serviceMethods()")
+    public Object logExecutionTime(ProceedingJoinPoint pjp) throws Throwable {
+        long start = System.currentTimeMillis();
+        Object result = pjp.proceed();  // Target 메서드 실행
+        log.info("실행 시간: {}ms", System.currentTimeMillis() - start);
+        return result;
+    }
+}
+```
+
+**Advice 종류**
+
+| Advice | 실행 시점 | 용도 |
+|--------|----------|------|
+| `@Before` | 메서드 실행 전 | 권한 체크, 로깅 |
+| `@After` | 메서드 실행 후 (예외 무관) | 리소스 정리 |
+| `@AfterReturning` | 정상 반환 후 | 결과 로깅 |
+| `@AfterThrowing` | 예외 발생 시 | 에러 로깅, 알림 |
+| `@Around` | 전후 모두 | 실행 시간 측정, 트랜잭션 |
 
 ### AOP 적용 방법
 
