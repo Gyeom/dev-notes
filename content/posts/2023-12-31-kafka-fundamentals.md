@@ -1,6 +1,6 @@
 ---
 title: "Kafka 핵심 개념 총정리"
-date: 2025-12-31
+date: 2023-12-31
 tags: ["Kafka", "Message Queue", "Distributed System", "Event Streaming"]
 categories: ["Backend"]
 summary: "Topic, Partition, Consumer Group부터 ISR, Replication, Exactly-Once Semantics까지 Kafka의 핵심 개념을 체계적으로 정리한다."

@@ -1,6 +1,6 @@
 ---
 title: "Spring Framework 핵심 개념 총정리"
-date: 2025-12-31
+date: 2023-12-31
 draft: false
 tags: ["Spring", "Spring MVC", "DI", "IoC", "AOP", "Transaction", "Bean"]
 categories: ["Backend"]
