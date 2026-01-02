@@ -44,6 +44,30 @@ flowchart LR
 | ViewResolver | View 이름 → 실제 View 변환 |
 | HandlerExceptionResolver | 예외 처리 |
 
+### @Controller vs @RestController
+
+```mermaid
+flowchart LR
+    subgraph Controller["@Controller"]
+        C1["Handler"] --> C2["ViewResolver"]
+        C2 --> C3["View (HTML)"]
+    end
+    subgraph RestController["@RestController"]
+        R1["Handler"] --> R2["HttpMessageConverter"]
+        R2 --> R3["JSON/XML"]
+    end
+    Controller ~~~ RestController
+```
+
+| 구분 | @Controller | @RestController |
+|------|-------------|-----------------|
+| 반환 | View 이름 | 데이터 (JSON/XML) |
+| 변환 | ViewResolver | HttpMessageConverter |
+| 용도 | SSR (Server Side Rendering) | REST API |
+| @ResponseBody | 필요 | 내장 |
+
+`@RestController` = `@Controller` + `@ResponseBody`
+
 ---
 
 ## DI (Dependency Injection)
@@ -144,6 +168,38 @@ public class AppConfig {
 | request | HTTP 요청마다 새 인스턴스 (웹) |
 | session | HTTP 세션마다 새 인스턴스 (웹) |
 
+### 싱글톤 + 프로토타입 스코프 문제
+
+**문제**: 싱글톤 Bean이 프로토타입 Bean을 주입받으면, 프로토타입이 싱글톤처럼 동작한다.
+
+```mermaid
+flowchart LR
+    A["SingletonBean"] --> B["PrototypeBean"]
+    A --> C["PrototypeBean 동일 인스턴스!"]
+    style C fill:#ffcccc
+```
+
+싱글톤 생성 시점에 프로토타입이 주입되어 고정되기 때문이다.
+
+**해결 방법**
+
+| 방법 | 설명 |
+|------|------|
+| ObjectProvider | `provider.getObject()` 호출 시마다 새 인스턴스 |
+| JSR-330 Provider | 자바 표준, 단위 테스트 용이 |
+| 프록시 사용 | CGLIB 프록시가 실제 Bean 요청 위임 |
+
+```java
+@Service
+public class SingletonService {
+    private final ObjectProvider<PrototypeBean> provider;
+
+    public void logic() {
+        PrototypeBean proto = provider.getObject();  // 매번 새 인스턴스
+    }
+}
+```
+
 ### Bean 생명주기
 
 ```mermaid
@@ -152,6 +208,58 @@ flowchart LR
     B --> C["초기화<br/>@PostConstruct"]
     C --> D["사용"]
     D --> E["소멸<br/>@PreDestroy"]
+```
+
+---
+
+## Autowiring
+
+컨테이너가 타입(인터페이스 또는 클래스)을 기준으로 의존 대상을 찾아 자동 주입한다.
+
+```mermaid
+flowchart LR
+    A["@Autowired"] --> B["타입으로 Bean 검색"]
+    B --> C{"후보 Bean 수"}
+    C -->|1개| D["주입"]
+    C -->|2개 이상| E["@Qualifier로 선택"]
+    C -->|0개| F["NoSuchBeanDefinitionException"]
+```
+
+| 상황 | 동작 |
+|------|------|
+| 타입 일치 Bean 1개 | 자동 주입 |
+| 타입 일치 Bean 2개 이상 | `@Qualifier`로 지정 필요 |
+| 타입 일치 Bean 없음 | 예외 발생 (`required=false`로 회피 가능) |
+
+---
+
+## Application 구동 시 메서드 실행
+
+Spring Application 시작 시점에 특정 로직을 실행하는 방법이다.
+
+| 방법 | 설명 |
+|------|------|
+| `CommandLineRunner` | `run(String... args)` 구현, CLI 인자 접근 |
+| `ApplicationRunner` | `run(ApplicationArguments args)` 구현 |
+| `@PostConstruct` | Bean 초기화 직후 실행 |
+| `InitializingBean` | `afterPropertiesSet()` 구현 |
+| `@Bean(initMethod)` | 지정한 메서드 호출 |
+| `ApplicationEvent` | `ApplicationReadyEvent` 리스너 등록 |
+
+```java
+@Component
+public class StartupRunner implements CommandLineRunner {
+    @Override
+    public void run(String... args) {
+        // 애플리케이션 시작 시 실행
+    }
+}
+
+// 또는 @EventListener 사용
+@EventListener(ApplicationReadyEvent.class)
+public void onReady() {
+    // 모든 Bean 초기화 완료 후 실행
+}
 ```
 
 ---
@@ -211,14 +319,26 @@ flowchart LR
 | Advice | 실제 실행할 로직 (Before, After, Around) |
 | Target | Advice가 적용되는 대상 객체 |
 
+### AOP 적용 방법
+
+| 시점 | 방법 | 특징 |
+|------|------|------|
+| 컴파일 타임 | AspectJ 컴파일러 | 바이트코드 조작, 성능 좋음 |
+| 로드 타임 | ClassLoader 위빙 | 클래스 로딩 시 변경 |
+| 런타임 | 프록시 생성 | Spring AOP 기본 방식 |
+
+Spring AOP는 **런타임 프록시 방식**을 사용한다.
+
 ### Spring AOP 구현 방식
 
 | 방식 | 대상 | 특징 |
 |------|------|------|
-| JDK Dynamic Proxy | 인터페이스 | 인터페이스 필수 |
-| CGLIB | 클래스 | 상속 기반, final 불가 |
+| JDK Dynamic Proxy | 인터페이스 | 리플렉션 기반, 인터페이스 필수 |
+| CGLIB | 클래스 | 바이트코드 조작, 상속 기반 |
 
 Spring Boot 2.0부터 기본값이 CGLIB이다.
+
+**리플렉션(Reflection)**: 런타임에 클래스/메서드 메타정보를 동적으로 획득하고 코드를 호출하는 기법. JDK Dynamic Proxy가 이를 사용한다.
 
 ### Self-Invocation 문제
 
@@ -244,6 +364,15 @@ public class OrderService {
 ---
 
 ## @Transactional
+
+### 선언적 vs 프로그래밍적 트랜잭션
+
+| 방식 | 특징 |
+|------|------|
+| 선언적 (`@Transactional`) | AOP 기반, 비즈니스 로직과 분리, 권장 |
+| 프로그래밍적 (`TransactionTemplate`) | 직접 제어, 세밀한 처리 가능 |
+
+Spring은 `PlatformTransactionManager`로 JDBC, JPA, Hibernate 등 다양한 기술을 추상화한다.
 
 ### 동작 원리
 
@@ -481,6 +610,50 @@ void test() {
 
 ---
 
+## 샤딩 vs 파티셔닝
+
+데이터베이스 볼륨이 커지면 분할이 필요하다.
+
+```mermaid
+flowchart LR
+    subgraph Partitioning["파티셔닝"]
+        P1["단일 DB"] --> P2["테이블 분할"]
+    end
+    subgraph Sharding["샤딩"]
+        S1["여러 DB"] --> S2["데이터 분산"]
+    end
+    Partitioning ~~~ Sharding
+```
+
+| 구분 | 파티셔닝 | 샤딩 |
+|------|----------|------|
+| 범위 | 단일 DB 내 테이블 분할 | 여러 DB로 데이터 분산 |
+| 수평 | 행 단위 분할 | 행 단위로 DB 분산 |
+| 수직 | 컬럼 단위 분할 | - |
+| 복잡도 | 낮음 | 높음 (분산 트랜잭션, 조인) |
+
+**샤딩 키 선택이 중요하다.** 데이터가 균등하게 분산되어야 한다.
+
+---
+
+## URL vs URI
+
+| 구분 | 설명 | 예시 |
+|------|------|------|
+| URI | 리소스 식별자 (Identifier) | `/users/1` |
+| URL | 리소스 위치 (Locator) | `https://api.example.com/users/1` |
+| URN | 리소스 이름 (Name) | `urn:isbn:0451450523` |
+
+```mermaid
+flowchart TB
+    A["URI"] --> B["URL"]
+    A --> C["URN"]
+```
+
+**URL ⊂ URI**: URL은 URI의 하위 개념이다. URL은 위치를 포함하고, URN은 이름만 포함한다.
+
+---
+
 ## 정리
 
 | 개념 | 핵심 |
@@ -491,6 +664,7 @@ void test() {
 | AOP | 횡단 관심사 분리 (프록시 기반) |
 | @Transactional | AOP 기반 트랜잭션 관리 |
 | Filter vs Interceptor | Servlet vs Spring 레벨 |
+| 샤딩 vs 파티셔닝 | 단일 DB vs 분산 DB |
 
 ---
 
