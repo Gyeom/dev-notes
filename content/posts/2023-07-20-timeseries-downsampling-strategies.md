@@ -25,6 +25,51 @@ summary: "1분 데이터를 15분 단위로 집계하는 방법. Spring 내부 �
 
 ---
 
+## 전체 아키텍처
+
+Edge 디바이스부터 API까지의 데이터 흐름.
+
+```mermaid
+flowchart LR
+    subgraph "Edge Layer"
+        E["Edge Device"]
+    end
+
+    subgraph "Ingestion"
+        E -->|"MQTT"| MB["MQTT Broker"]
+        MB -->|"Bridge"| K["Kafka"]
+    end
+
+    subgraph "Processing"
+        K --> S["Spring Boot<br/>(Kafka Streams)"]
+        K --> F["Flink"]
+    end
+
+    subgraph "Storage & Serving"
+        S --> DB["TimescaleDB"]
+        F --> DB
+        DB --> API["Spring API"]
+    end
+
+    style MB fill:#fff3e0
+    style K fill:#fff3e0
+    style S fill:#c8e6c9
+    style F fill:#bbdefb
+    style API fill:#c8e6c9
+```
+
+**핵심 흐름**: `Edge → MQTT → Kafka → Processing → DB → API`
+
+### MQTT → Kafka 연결
+
+| 방식 | 설명 | 적합한 경우 |
+|------|------|------------|
+| **EMQX Kafka Bridge** | EMQX 내장 기능 | EMQX 사용 시 |
+| **Kafka Connect** | MQTT Source Connector | Confluent 환경 |
+| **Custom Bridge** | Spring으로 직접 구현 | 세밀한 제어 필요 |
+
+---
+
 ## 아키텍처 패턴
 
 ### Spring 내부에서 처리 (소~중규모)
@@ -33,16 +78,16 @@ Spring Boot 애플리케이션 안에서 모든 처리를 한다.
 
 ```mermaid
 flowchart LR
-    A["데이터 수집"] --> B["Spring Boot"]
-    B --> C["Scheduled Job<br/>or Kafka Streams"]
-    C --> D["DB"]
-    D --> E["API 응답"]
+    E["Edge"] -->|MQTT| MB["MQTT Broker"] -->|Bridge| K["Kafka"]
+    K --> S["Spring Boot<br/>(Kafka Streams)"]
+    S --> DB["TimescaleDB"]
+    DB --> API["API"]
 
-    style B fill:#c8e6c9
+    style S fill:#c8e6c9
 ```
 
-- **Scheduled Job**: `@Scheduled`로 주기적 집계
-- **Kafka Streams**: Spring 앱 내에서 스트림 처리
+- **Kafka Streams**: Spring 앱 내에서 스트림 처리, 별도 클러스터 불필요
+- **Scheduled Job**: Kafka 없이 DB 직접 집계 (더 단순)
 
 **적합**: 데이터 < 100만 건/일, 팀이 작음
 
@@ -52,25 +97,17 @@ Flink/Spark가 집계하고, Spring은 결과만 서빙한다.
 
 ```mermaid
 flowchart LR
-    subgraph "데이터 수집"
-        A["IoT / 서비스"] --> B["Kafka"]
-    end
+    E["Edge"] -->|MQTT| MB["MQTT Broker"] -->|Bridge| K["Kafka"]
 
-    subgraph "처리 (별도 클러스터)"
-        B --> C["Flink / Spark"]
-        C --> D["DB / Redis"]
-    end
+    K --> F["Flink"]
+    F --> DB["TimescaleDB"]
+    DB --> API["Spring API"]
 
-    subgraph "서빙 (Spring)"
-        D --> E["Spring API"]
-        E --> F["Dashboard"]
-    end
-
-    style C fill:#bbdefb
-    style E fill:#c8e6c9
+    style F fill:#bbdefb
+    style API fill:#c8e6c9
 ```
 
-**Flink/Spark와 Spring은 별도 애플리케이션**이고, **저장소를 통해 연결**된다.
+**Flink와 Spring은 별도 애플리케이션**이고, **DB를 통해 연결**된다.
 
 **적합**: 데이터 > 100만 건/일, 실시간 필수, 전담 데이터팀 있음
 
