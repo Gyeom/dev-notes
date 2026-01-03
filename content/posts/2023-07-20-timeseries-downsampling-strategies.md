@@ -457,29 +457,83 @@ fun getOptimalResolution(from: Instant, to: Instant): String {
 
 ### Flink로 다중 해상도 구현
 
-대규모에서는 원본 스트림 한 번으로 모든 해상도 동시 집계.
+대규모에서는 Flink로 실시간 집계. **15분까지만 사전 집계**하고, 시간/일은 조회 시 동적 집계한다 (타임존 이슈).
 
 ```java
 DataStream<Telemetry> stream = env.fromSource(kafkaSource, ...);
 
-// 15분 집계
+// 15분 집계만 사전 처리 (타임존 무관)
 stream.keyBy(Telemetry::getDeviceId)
     .window(TumblingEventTimeWindows.of(Time.minutes(15)))
     .aggregate(new Aggregator())
     .addSink(jdbcSink("data_15m"));
 
-// 1시간 집계 (같은 소스에서 동시에)
-stream.keyBy(Telemetry::getDeviceId)
-    .window(TumblingEventTimeWindows.of(Time.hours(1)))
-    .aggregate(new Aggregator())
-    .addSink(jdbcSink("data_1h"));
-
-// 1일 집계
-stream.keyBy(Telemetry::getDeviceId)
-    .window(TumblingEventTimeWindows.of(Time.days(1)))
-    .aggregate(new Aggregator())
-    .addSink(jdbcSink("data_1d"));
+// 1시간/1일은 사전 집계하지 않음 → 조회 시 타임존 기반 동적 집계
 ```
+
+### 타임존 고려 사항 (중요)
+
+시간/일/월 집계는 **타임존에 따라 경계가 달라진다**.
+
+```
+UTC 00:00 = KST 09:00
+→ UTC 기준 "2024-01-15"는 KST 기준 01-15 09:00 ~ 01-16 09:00
+→ 사용자에게 하루 데이터가 어긋남
+```
+
+**권장: 15분까지만 사전 집계**
+
+| 해상도 | 사전 집계 | 이유 |
+|--------|:--------:|------|
+| 1분 | ✅ | 타임존 무관 |
+| 15분 | ✅ | 타임존 무관 |
+| 1시간 | ❌ | 일부 지역 30분 오프셋 (인도 UTC+5:30) |
+| 1일+ | ❌ | 타임존마다 경계 다름 |
+
+**시간/일/월은 요청 시점에 동적 집계**:
+
+```kotlin
+// 사용자 타임존 기반 일별 집계
+fun getDailyData(
+    deviceId: String,
+    date: LocalDate,
+    userTimezone: ZoneId
+): DataPoint {
+    // 사용자 타임존으로 하루의 시작/끝 계산
+    val startUtc = date.atStartOfDay(userTimezone).toInstant()
+    val endUtc = date.plusDays(1).atStartOfDay(userTimezone).toInstant()
+
+    // 15분 집계 데이터를 동적으로 재집계
+    return data15mRepository.findBetween(deviceId, startUtc, endUtc)
+        .let { aggregate(it) }
+}
+
+// API에서 타임존 파라미터 받기
+@GetMapping("/data/{deviceId}/daily")
+fun getDailyData(
+    @PathVariable deviceId: String,
+    @RequestParam date: LocalDate,
+    @RequestParam(defaultValue = "Asia/Seoul") tz: String
+): DataPoint {
+    return getDailyData(deviceId, date, ZoneId.of(tz))
+}
+```
+
+**TimescaleDB도 동일하게 처리**:
+
+```sql
+-- 사용자 타임존 기반 일별 조회
+SELECT
+    date_trunc('day', bucket AT TIME ZONE 'Asia/Seoul') AS day,
+    device_id,
+    AVG(avg) AS avg_value
+FROM data_15m
+WHERE bucket >= '2024-01-15'::date AT TIME ZONE 'Asia/Seoul'
+  AND bucket < '2024-01-16'::date AT TIME ZONE 'Asia/Seoul'
+GROUP BY day, device_id;
+```
+
+> **정리**: 15분까지는 UTC 기준 사전 집계, 시간/일/월은 사용자 타임존 기반 동적 집계.
 
 ---
 
