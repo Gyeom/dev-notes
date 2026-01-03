@@ -437,6 +437,99 @@ SELECT add_continuous_aggregate_policy('data_15m',
 );
 ```
 
+### 며칠 뒤 도착 데이터 (Late Batch)
+
+엣지 디바이스가 오프라인이었다가 며칠 뒤 일괄 업로드하는 경우. 일반적인 Late Arrival과 다른 전략이 필요하다.
+
+```
+디바이스 오프라인 3일 → 복귀 → 3일치 데이터 일괄 업로드
+→ 원본 데이터 이미 삭제됨 (7일 보관 정책)
+→ 집계도 완료됨
+→ 어떻게?
+```
+
+**Late Batch 감지**:
+
+```kotlin
+fun handleUpload(deviceId: String, data: List<RawData>) {
+    val oldestTimestamp = data.minOf { it.timestamp }
+    val delay = Duration.between(oldestTimestamp, Instant.now())
+
+    if (delay > Duration.ofHours(24)) {
+        // 24시간 이상 지연 → Late Batch 처리
+        lateDataProcessor.process(deviceId, data)
+    } else {
+        rawRepository.saveAll(data)
+    }
+}
+```
+
+**처리 전략**:
+
+| 전략 | 방식 | 적합한 경우 |
+|------|------|------------|
+| **재집계** | 원본 저장 후 영향받는 버킷 재계산 | 정확성 필수 (과금) |
+| **별도 테이블** | late 테이블에 저장, 쿼리 시 병합 | 대시보드용 |
+| **감사 로그** | 늦은 원본만 영구 보관 | 디버깅/감사 |
+
+**전략 1: 재집계**
+
+```kotlin
+fun reprocessLateBatch(deviceId: String, data: List<RawData>) {
+    // 1. 원본 저장 (늦었더라도 보관)
+    rawRepository.saveAll(data)
+
+    // 2. 영향받는 버킷 재집계
+    val affectedBuckets = data.map { it.timestamp.truncateTo15Min() }.distinct()
+    affectedBuckets.forEach { bucket ->
+        val recalculated = rawRepository.aggregateBucket(deviceId, bucket)
+        aggregatedRepository.upsert(recalculated)
+    }
+
+    // 3. 메타데이터 업데이트
+    affectedBuckets.forEach { bucket ->
+        aggregatedRepository.markAsContainsLateData(deviceId, bucket)
+    }
+}
+```
+
+**전략 2: 별도 테이블 + 쿼리 병합**
+
+```sql
+-- 조회 시 정상 + 늦은 데이터 병합
+SELECT bucket, device_id, AVG(avg) AS avg
+FROM (
+    SELECT * FROM data_15m WHERE device_id = ? AND bucket BETWEEN ? AND ?
+    UNION ALL
+    SELECT * FROM data_15m_late WHERE device_id = ? AND bucket BETWEEN ? AND ?
+) combined
+GROUP BY bucket, device_id;
+```
+
+**보관 기간 조정**:
+
+| 데이터 | 기존 | 조정 | 이유 |
+|--------|------|------|------|
+| 원본 (1분) | 7일 | **30일** | 늦은 배치 재집계 여유 |
+| 늦은 원본 | - | **영구** | 감사/디버깅 |
+| 15분 집계 | 30일 | 90일 | Late Batch 반영 기간 |
+
+> **원본 보관 기간 = 예상 최대 오프라인 기간 + 여유**
+
+**메타데이터로 추적**:
+
+```kotlin
+data class AggregatedData(
+    val bucket: Instant,
+    val deviceId: String,
+    val avg: Double,
+    val completeness: Double,
+    val lastUpdated: Instant,       // 마지막 갱신 시점
+    val containsLateData: Boolean,  // 늦은 데이터 포함 여부
+    val lateDataRatio: Double       // 늦은 데이터 비율
+)
+```
+
 ### 부분 윈도우 처리
 
 버킷이 아직 완료되지 않았을 때 조회하면 불완전한 데이터가 반환된다.
