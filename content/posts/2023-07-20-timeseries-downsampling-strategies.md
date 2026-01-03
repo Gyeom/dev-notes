@@ -366,3 +366,169 @@ flowchart TD
 - 소~중규모는 **Spring 내부에서 처리**
 - 대규모는 **처리 엔진 분리** (Flink/Spark)
 - Flink/Spark는 Spring과 **별도 애플리케이션**, 저장소로 연결
+
+---
+
+## 실전 예시: 다중 해상도 API
+
+1분, 15분, 1시간, 1일, 월, 년 단위로 데이터를 제공해야 하는 경우.
+
+### Cascading Aggregation
+
+상위 해상도는 **하위 집계 결과를 재집계**한다. 매번 원본을 읽지 않음.
+
+```mermaid
+flowchart LR
+    A["1분 원본"] -->|"15분마다"| B["15분"]
+    B -->|"매시간"| C["1시간"]
+    C -->|"매일"| D["1일"]
+    D -->|"매월"| E["월"]
+
+    A -->|"7일 보관"| X1["삭제"]
+    B -->|"30일 보관"| X2["삭제"]
+    C -->|"1년 보관"| X3["삭제"]
+    D -->|"영구"| X4["유지"]
+```
+
+### 저장 전략
+
+| 해상도 | 테이블 | 보관 기간 | 원본 |
+|--------|--------|----------|------|
+| 1분 | `raw_data` | 7일 | - |
+| 15분 | `data_15m` | 30일 | 1분 |
+| 1시간 | `data_1h` | 1년 | 15분 |
+| 1일 | `data_1d` | 영구 | 1시간 |
+| 월/년 | - | - | 1일 쿼리 |
+
+**월/년**은 별도 테이블 없이 `data_1d`를 GROUP BY로 조회.
+
+### TimescaleDB로 구현
+
+```sql
+-- 1. 15분 집계 (1분 원본에서)
+CREATE MATERIALIZED VIEW data_15m WITH (timescaledb.continuous) AS
+SELECT time_bucket('15 minutes', ts) AS bucket, device_id,
+       AVG(value) AS avg, MIN(value) AS min, MAX(value) AS max
+FROM raw_data GROUP BY bucket, device_id;
+
+-- 2. 1시간 집계 (15분에서)
+CREATE MATERIALIZED VIEW data_1h WITH (timescaledb.continuous) AS
+SELECT time_bucket('1 hour', bucket) AS bucket, device_id,
+       AVG(avg) AS avg, MIN(min) AS min, MAX(max) AS max
+FROM data_15m GROUP BY bucket, device_id;
+
+-- 3. 1일 집계 (1시간에서)
+CREATE MATERIALIZED VIEW data_1d WITH (timescaledb.continuous) AS
+SELECT time_bucket('1 day', bucket) AS bucket, device_id,
+       AVG(avg) AS avg, MIN(min) AS min, MAX(max) AS max
+FROM data_1h GROUP BY bucket, device_id;
+```
+
+### Spring API
+
+```kotlin
+@GetMapping("/data/{deviceId}")
+fun getData(
+    @PathVariable deviceId: String,
+    @RequestParam resolution: String,
+    @RequestParam from: Instant,
+    @RequestParam to: Instant
+): List<DataPoint> {
+    return when (resolution) {
+        "1m" -> rawRepository.find(deviceId, from, to)
+        "15m" -> data15mRepository.find(deviceId, from, to)
+        "1h" -> data1hRepository.find(deviceId, from, to)
+        "1d" -> data1dRepository.find(deviceId, from, to)
+        else -> throw BadRequestException("Invalid resolution")
+    }
+}
+
+// 기간에 따라 자동 해상도 선택
+fun getOptimalResolution(from: Instant, to: Instant): String {
+    val hours = Duration.between(from, to).toHours()
+    return when {
+        hours <= 1 -> "1m"
+        hours <= 24 -> "15m"
+        hours <= 168 -> "1h"
+        else -> "1d"
+    }
+}
+```
+
+### Flink로 다중 해상도 구현
+
+대규모에서는 원본 스트림 한 번으로 모든 해상도 동시 집계.
+
+```java
+DataStream<Telemetry> stream = env.fromSource(kafkaSource, ...);
+
+// 15분 집계
+stream.keyBy(Telemetry::getDeviceId)
+    .window(TumblingEventTimeWindows.of(Time.minutes(15)))
+    .aggregate(new Aggregator())
+    .addSink(jdbcSink("data_15m"));
+
+// 1시간 집계 (같은 소스에서 동시에)
+stream.keyBy(Telemetry::getDeviceId)
+    .window(TumblingEventTimeWindows.of(Time.hours(1)))
+    .aggregate(new Aggregator())
+    .addSink(jdbcSink("data_1h"));
+
+// 1일 집계
+stream.keyBy(Telemetry::getDeviceId)
+    .window(TumblingEventTimeWindows.of(Time.days(1)))
+    .aggregate(new Aggregator())
+    .addSink(jdbcSink("data_1d"));
+```
+
+---
+
+## Flink/Spark는 언제 필요한가?
+
+단순 집계(AVG, MIN, MAX)는 어떤 도구든 가능하다. 차이는 **규모와 운영 비용**.
+
+| 기준 | TimescaleDB / Scheduled Job | Flink / Spark |
+|------|:---------------------------:|:-------------:|
+| 데이터량 | < 1억 건/일 | **> 1억 건/일** |
+| 디바이스 수 | < 1만 대 | > 1만 대 |
+| 처리 지연 | 분 단위 OK | **초 단위 필수** |
+| 팀 구성 | 백엔드만 | 데이터 엔지니어 있음 |
+| 인프라 | DB만 | Kafka + 클러스터 |
+
+### Flink가 적합한 경우
+
+- 초 단위 실시간 필수
+- 이벤트 시간 기반 정확한 윈도우
+- Late arrival 데이터 처리 필요
+- 원본 스트림으로 다중 해상도 동시 집계
+
+### Spark가 적합한 경우
+
+- 대용량 배치 처리
+- 데이터 레이크 환경 (S3/GCS)
+- 과거 데이터 재처리 빈번
+- 분~시간 지연 허용
+
+### 오버엔지니어링 주의
+
+```mermaid
+flowchart TD
+    A["데이터량?"] -->|"< 1억/일"| B["TimescaleDB<br/>or Scheduled Job"]
+    A -->|"> 1억/일"| C["실시간 필요?"]
+
+    C -->|"초 단위"| D["Flink"]
+    C -->|"분~시간 OK"| E["Spark"]
+
+    style B fill:#c8e6c9
+    style D fill:#bbdefb
+    style E fill:#bbdefb
+```
+
+**Flink/Spark가 "부적합"한 게 아니라, 규모가 작으면 "과한" 것이다.**
+
+| 상황 | 권장 |
+|------|------|
+| 중규모, 빠른 구현 | **TimescaleDB** |
+| 대규모, 실시간 필수 | **Flink** |
+| 대규모, 배치 OK | **Spark** |
+| Kafka 이미 있음 | **Flink** or **Kafka Streams**
