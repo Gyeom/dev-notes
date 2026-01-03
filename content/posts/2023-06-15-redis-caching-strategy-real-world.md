@@ -22,26 +22,20 @@ summary: "Cache-Aside, Write-Through, Write-Behind 패턴과 Multi-tier 캐시 �
 가장 널리 사용되는 패턴이다. 애플리케이션이 캐시를 직접 관리한다.
 
 ```kotlin
-@Service
-class VehicleService(
-    private val vehicleRepository: VehicleRepository,
-    private val redisTemplate: RedisTemplate<String, Vehicle>
-) {
-    fun getVehicle(id: String): Vehicle {
-        val cacheKey = "vehicle:$id"
+fun getProduct(id: String): Product {
+    val cacheKey = "product:$id"
 
-        // 1. 캐시 조회
-        redisTemplate.opsForValue().get(cacheKey)?.let { return it }
+    // 1. 캐시 조회
+    redisTemplate.opsForValue().get(cacheKey)?.let { return it }
 
-        // 2. 캐시 미스 → DB 조회
-        val vehicle = vehicleRepository.findById(id)
-            .orElseThrow { NotFoundException("Vehicle not found: $id") }
+    // 2. 캐시 미스 → DB 조회
+    val product = productRepository.findById(id)
+        .orElseThrow { NotFoundException("Product not found: $id") }
 
-        // 3. 캐시에 저장
-        redisTemplate.opsForValue().set(cacheKey, vehicle, Duration.ofMinutes(30))
+    // 3. 캐시에 저장
+    redisTemplate.opsForValue().set(cacheKey, product, Duration.ofMinutes(30))
 
-        return vehicle
-    }
+    return product
 }
 ```
 
@@ -53,27 +47,15 @@ class VehicleService(
 쓰기 시 캐시와 DB를 동시에 업데이트한다.
 
 ```kotlin
-@Service
-class VehicleService(
-    private val vehicleRepository: VehicleRepository,
-    private val redisTemplate: RedisTemplate<String, Vehicle>
-) {
-    @Transactional
-    fun updateVehicle(id: String, command: UpdateVehicleCommand): Vehicle {
-        val vehicle = vehicleRepository.findById(id)
-            .orElseThrow { NotFoundException("Vehicle not found: $id") }
+@Transactional
+fun updateProduct(id: String, command: UpdateCommand): Product {
+    val product = productRepository.findById(id).orElseThrow()
+    product.update(command)
+    val saved = productRepository.save(product)
 
-        vehicle.update(command)
-
-        // DB 저장
-        val saved = vehicleRepository.save(vehicle)
-
-        // 캐시도 함께 업데이트
-        val cacheKey = "vehicle:$id"
-        redisTemplate.opsForValue().set(cacheKey, saved, Duration.ofMinutes(30))
-
-        return saved
-    }
+    // 캐시도 함께 업데이트
+    redisTemplate.opsForValue().set("product:$id", saved, Duration.ofMinutes(30))
+    return saved
 }
 ```
 
@@ -85,35 +67,20 @@ class VehicleService(
 쓰기를 캐시에만 하고, 비동기로 DB에 반영한다.
 
 ```kotlin
-@Service
-class TelemetryService(
-    private val redisTemplate: RedisTemplate<String, Telemetry>,
-    private val telemetryRepository: TelemetryRepository
-) {
-    // 캐시에만 쓰기 (빠름)
-    fun saveTelemetry(telemetry: Telemetry) {
-        val cacheKey = "telemetry:${telemetry.deviceId}:latest"
-        redisTemplate.opsForValue().set(cacheKey, telemetry)
+// 캐시에만 쓰기 (빠름)
+fun saveEvent(event: Event) {
+    redisTemplate.opsForValue().set("event:${event.id}:latest", event)
+    redisTemplate.opsForList().rightPush("event:pending", event)  // 배치 대기열
+}
 
-        // 배치 처리를 위해 목록에 추가
-        redisTemplate.opsForList().rightPush("telemetry:pending", telemetry)
+// 주기적으로 DB에 반영
+@Scheduled(fixedDelay = 5000)
+fun flushToDatabase() {
+    val pending = mutableListOf<Event>()
+    while (true) {
+        redisTemplate.opsForList().leftPop("event:pending")?.let { pending.add(it) } ?: break
     }
-
-    // 주기적으로 DB에 반영
-    @Scheduled(fixedDelay = 5000)
-    fun flushToDatabase() {
-        val pending = mutableListOf<Telemetry>()
-
-        while (true) {
-            val telemetry = redisTemplate.opsForList()
-                .leftPop("telemetry:pending") ?: break
-            pending.add(telemetry)
-        }
-
-        if (pending.isNotEmpty()) {
-            telemetryRepository.saveAll(pending)
-        }
-    }
+    if (pending.isNotEmpty()) eventRepository.saveAll(pending)
 }
 ```
 
@@ -172,25 +139,15 @@ class CacheConfig {
 Multi-tier에서 가장 어려운 문제는 일관성이다. 데이터가 업데이트되면 모든 인스턴스의 Local Cache를 무효화해야 한다.
 
 ```kotlin
-@Service
-class VehicleCacheService(
-    private val redisTemplate: RedisTemplate<String, String>,
-    private val localCache: Cache
-) {
-    // Redis Pub/Sub으로 캐시 무효화 전파
-    fun invalidate(vehicleId: String) {
-        // Local Cache 무효화
-        localCache.evict("vehicle:$vehicleId")
+// Redis Pub/Sub으로 캐시 무효화 전파
+fun invalidate(key: String) {
+    localCache.evict(key)
+    redisTemplate.convertAndSend("cache:invalidate", key)  // 다른 인스턴스에 전파
+}
 
-        // 다른 인스턴스에 무효화 메시지 전파
-        redisTemplate.convertAndSend("cache:invalidate", "vehicle:$vehicleId")
-    }
-
-    // 무효화 메시지 수신
-    @EventListener
-    fun onCacheInvalidate(message: CacheInvalidateMessage) {
-        localCache.evict(message.key)
-    }
+@EventListener
+fun onCacheInvalidate(message: CacheInvalidateMessage) {
+    localCache.evict(message.key)
 }
 ```
 
@@ -215,35 +172,19 @@ redisTemplate.opsForValue().set(key, value, Duration.ofMinutes(30))
 데이터 변경 시 즉시 무효화.
 
 ```kotlin
-@Service
-class VehicleService(
-    private val vehicleRepository: VehicleRepository,
-    private val cacheService: VehicleCacheService,
-    private val eventPublisher: ApplicationEventPublisher
-) {
-    @Transactional
-    fun updateVehicle(id: String, command: UpdateVehicleCommand): Vehicle {
-        val vehicle = vehicleRepository.findById(id)
-            .orElseThrow { NotFoundException("Vehicle not found: $id") }
+@Transactional
+fun updateProduct(id: String, command: UpdateCommand): Product {
+    val product = productRepository.findById(id).orElseThrow()
+    product.update(command)
+    val saved = productRepository.save(product)
 
-        vehicle.update(command)
-        val saved = vehicleRepository.save(vehicle)
-
-        // 이벤트 발행 → 캐시 무효화
-        eventPublisher.publishEvent(VehicleUpdatedEvent(saved))
-
-        return saved
-    }
+    eventPublisher.publishEvent(ProductUpdatedEvent(saved))  // 이벤트 발행
+    return saved
 }
 
-@Component
-class VehicleCacheInvalidator(
-    private val cacheService: VehicleCacheService
-) {
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    fun onVehicleUpdated(event: VehicleUpdatedEvent) {
-        cacheService.invalidate(event.vehicle.id)
-    }
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+fun onProductUpdated(event: ProductUpdatedEvent) {
+    cacheService.invalidate("product:${event.product.id}")
 }
 ```
 
@@ -254,28 +195,20 @@ class VehicleCacheInvalidator(
 캐시 키에 버전을 포함시킨다.
 
 ```kotlin
-@Service
-class ConfigService(
-    private val redisTemplate: RedisTemplate<String, Config>,
-    private val configRepository: ConfigRepository
-) {
-    private var version: Long = System.currentTimeMillis()
+private var version: Long = System.currentTimeMillis()
 
-    fun getConfig(key: String): Config {
-        val cacheKey = "config:$key:v$version"
+fun getConfig(key: String): Config {
+    val cacheKey = "config:$key:v$version"
+    redisTemplate.opsForValue().get(cacheKey)?.let { return it }
 
-        redisTemplate.opsForValue().get(cacheKey)?.let { return it }
+    val config = configRepository.findByKey(key)
+    redisTemplate.opsForValue().set(cacheKey, config)
+    return config
+}
 
-        val config = configRepository.findByKey(key)
-        redisTemplate.opsForValue().set(cacheKey, config)
-
-        return config
-    }
-
-    // 버전 변경 → 모든 캐시 자동 무효화
-    fun refreshAll() {
-        version = System.currentTimeMillis()
-    }
+// 버전 변경 → 모든 캐시 자동 무효화
+fun refreshAll() {
+    version = System.currentTimeMillis()
 }
 ```
 
@@ -287,66 +220,130 @@ class ConfigService(
 
 ### Cache Stampede 방지
 
-캐시가 만료되는 순간 다수의 요청이 DB로 몰리는 현상.
+캐시가 만료되는 순간 다수의 요청이 DB로 몰리는 현상. 여러 해결책이 있다.
+
+#### 1. 분산 락 (Distributed Lock)
+
+하나의 요청만 DB를 조회하고, 나머지는 대기한다.
 
 ```kotlin
-@Service
-class VehicleService(
-    private val vehicleRepository: VehicleRepository,
-    private val redisTemplate: RedisTemplate<String, Vehicle>,
-    private val lockRegistry: LockRegistry
-) {
-    fun getVehicle(id: String): Vehicle {
-        val cacheKey = "vehicle:$id"
+fun getProduct(id: String): Product {
+    val cacheKey = "product:$id"
+    redisTemplate.opsForValue().get(cacheKey)?.let { return it }
 
-        redisTemplate.opsForValue().get(cacheKey)?.let { return it }
+    val lock = lockRegistry.obtain(cacheKey)
+    return if (lock.tryLock(100, TimeUnit.MILLISECONDS)) {
+        try {
+            // Double-check: 락 획득 사이에 다른 요청이 캐시를 채웠을 수 있음
+            redisTemplate.opsForValue().get(cacheKey)?.let { return it }
 
-        // 분산 락으로 하나의 요청만 DB 조회
-        val lock = lockRegistry.obtain(cacheKey)
-
-        return if (lock.tryLock(100, TimeUnit.MILLISECONDS)) {
-            try {
-                // Double-check: 락 획득 사이에 다른 요청이 캐시를 채웠을 수 있음
-                redisTemplate.opsForValue().get(cacheKey)?.let { return it }
-
-                val vehicle = vehicleRepository.findById(id)
-                    .orElseThrow { NotFoundException("Vehicle not found: $id") }
-
-                redisTemplate.opsForValue().set(cacheKey, vehicle, Duration.ofMinutes(30))
-                vehicle
-            } finally {
-                lock.unlock()
-            }
-        } else {
-            // 락 획득 실패 → 잠시 후 재시도
-            Thread.sleep(50)
-            getVehicle(id)
-        }
+            val product = productRepository.findById(id).orElseThrow()
+            redisTemplate.opsForValue().set(cacheKey, product, Duration.ofMinutes(30))
+            product
+        } finally { lock.unlock() }
+    } else {
+        Thread.sleep(50)
+        getProduct(id)  // 재시도
     }
 }
 ```
+
+#### 2. Probabilistic Early Expiration (PER)
+
+TTL 만료 전에 확률적으로 캐시를 미리 갱신한다. Netflix 등에서 사용하는 방식.
+
+```kotlin
+fun getProduct(id: String): Product {
+    val cacheKey = "product:$id"
+    val cached = redisTemplate.opsForValue().get(cacheKey)
+    val ttl = redisTemplate.getExpire(cacheKey, TimeUnit.SECONDS)
+
+    // TTL이 20% 이하로 남았을 때, 10% 확률로 미리 갱신
+    if (cached != null && ttl > 0) {
+        val shouldRefresh = ttl < TTL_SECONDS * 0.2 && Random.nextDouble() < 0.1
+        if (!shouldRefresh) return cached
+    }
+
+    val product = productRepository.findById(id).orElseThrow()
+    redisTemplate.opsForValue().set(cacheKey, product, Duration.ofSeconds(TTL_SECONDS))
+    return product
+}
+```
+
+**장점**: 락 없이 자연스럽게 분산, 구현 단순
+**단점**: 확률적이라 완벽하지 않음
+
+#### 3. Singleflight (Request Coalescing)
+
+동일 키에 대한 동시 요청을 하나로 합친다. Caffeine 캐시가 이 패턴을 내장한다.
+
+```kotlin
+// Caffeine의 get(key, loader)는 자동으로 Singleflight 적용
+private val cache = Caffeine.newBuilder()
+    .maximumSize(1000)
+    .expireAfterWrite(Duration.ofMinutes(5))
+    .build<String, Product>()
+
+fun getProduct(id: String): Product {
+    return cache.get(id) { key ->
+        productRepository.findById(key).orElseThrow()  // 동시 요청은 하나만 실행
+    }
+}
+```
+
+**장점**: 별도 락 불필요, 라이브러리가 처리
+**단점**: Local Cache에만 적용 (Redis에는 분산 락 필요)
+
+#### 4. Stale-While-Revalidate (Soft TTL)
+
+만료된 데이터라도 일단 반환하고, 백그라운드에서 갱신한다.
+
+```kotlin
+data class CacheEntry<T>(val data: T, val softExpireAt: Long, val hardExpireAt: Long)
+
+fun getProduct(id: String): Product {
+    val cacheKey = "product:$id"
+    val entry = redisTemplate.opsForValue().get(cacheKey) as CacheEntry<Product>?
+
+    val now = System.currentTimeMillis()
+    if (entry != null) {
+        if (now < entry.softExpireAt) return entry.data  // 신선함
+
+        // Soft TTL 지남 → 일단 반환하고 백그라운드 갱신
+        if (now < entry.hardExpireAt) {
+            refreshAsync(id)  // 비동기 갱신
+            return entry.data  // stale 데이터 반환
+        }
+    }
+
+    // Hard TTL 지남 → 동기 갱신
+    return refreshSync(id)
+}
+```
+
+**장점**: 사용자 대기 시간 최소화
+**단점**: 일시적으로 오래된 데이터 반환
+
+#### 해결책 비교
+
+| 방식 | 복잡도 | 지연 | 일관성 | 적합한 경우 |
+|------|:------:|:----:|:------:|------------|
+| 분산 락 | 중 | 있음 | 높음 | 일관성 중요 |
+| PER | 낮 | 없음 | 중 | 읽기 많은 서비스 |
+| Singleflight | 낮 | 없음 | 높음 | Local Cache 사용 시 |
+| Soft TTL | 중 | 없음 | 낮 | 약간의 지연 허용 |
 
 ### Circuit Breaker
 
 Redis 장애 시 DB로 폴백.
 
 ```kotlin
-@Service
-class ResilientCacheService(
-    private val redisTemplate: RedisTemplate<String, Any>,
-    private val circuitBreakerRegistry: CircuitBreakerRegistry
-) {
-    private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("redis")
-
-    fun <T> get(key: String, fallback: () -> T): T? {
-        return try {
-            circuitBreaker.executeSupplier {
-                redisTemplate.opsForValue().get(key) as T?
-            }
-        } catch (e: Exception) {
-            logger.warn("Redis unavailable, skipping cache: ${e.message}")
-            null // 캐시 없이 진행
-        }
+fun <T> getWithFallback(key: String, loader: () -> T): T? {
+    return try {
+        circuitBreaker.executeSupplier { redisTemplate.opsForValue().get(key) as T? }
+    } catch (e: Exception) {
+        logger.warn("Redis unavailable: ${e.message}")
+        null  // 캐시 없이 진행
     }
 }
 ```
