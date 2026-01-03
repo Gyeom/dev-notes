@@ -302,13 +302,158 @@ flowchart LR
 
 ---
 
-## Edge Cases 처리
+## 데이터 단절과 복구
 
-| 케이스 | 처리 방법 |
-|--------|----------|
-| **결측치** | `completeness` 필드로 신뢰도 표시 |
-| **늦은 도착** | Flink `allowedLateness()`, 별도 재처리 |
-| **부분 윈도우** | 완료된 버킷만 집계 |
+시계열 집계에서 가장 까다로운 문제. 네트워크 장애, 시스템 다운타임 등으로 데이터가 누락되거나 늦게 도착한다.
+
+### Gap 감지
+
+```kotlin
+// 예상 버킷과 실제 버킷 비교
+fun detectGaps(deviceId: String, from: Instant, to: Instant): List<Instant> {
+    val expected = generateBuckets(from, to, Duration.ofMinutes(15))
+    val actual = repository.findBuckets(deviceId, from, to).map { it.bucket }
+    return expected - actual.toSet()
+}
+
+// 집계 시 completeness 메타데이터 저장
+data class AggregatedData(
+    val bucket: Instant,
+    val avg: Double,
+    val count: Int,           // 실제 데이터 포인트 수
+    val expectedCount: Int,   // 예상 데이터 포인트 수 (15분 = 15개)
+    val completeness: Double  // count / expectedCount
+)
+```
+
+### Gap 처리 전략
+
+| 전략 | 방식 | 적합한 경우 |
+|------|------|------------|
+| **Null 유지** | 빈 버킷 그대로 | 정확성 중요 (센서, 금융) |
+| **보간 (Interpolation)** | 앞뒤 값 평균/선형 | 시각화용, 연속 데이터 |
+| **Last Value (LOCF)** | 마지막 값 유지 | 상태 데이터 (on/off, 설정) |
+| **Zero Fill** | 0으로 채움 | 카운터 (없으면 0건) |
+
+```kotlin
+// 조회 시 Gap 처리
+fun getDataWithGapFill(
+    deviceId: String,
+    from: Instant,
+    to: Instant,
+    strategy: GapFillStrategy
+): List<DataPoint> {
+    val data = repository.findBetween(deviceId, from, to).associateBy { it.bucket }
+    val allBuckets = generateBuckets(from, to, Duration.ofMinutes(15))
+
+    return allBuckets.map { bucket ->
+        data[bucket] ?: when (strategy) {
+            GapFillStrategy.NULL -> DataPoint(bucket, null)
+            GapFillStrategy.ZERO -> DataPoint(bucket, 0.0)
+            GapFillStrategy.INTERPOLATE -> interpolate(data, bucket)
+            GapFillStrategy.LOCF -> lastKnownValue(data, bucket)
+        }
+    }
+}
+```
+
+### 늦은 도착 데이터 (Late Arrival)
+
+데이터가 집계 완료 후 도착하는 경우.
+
+```
+[문제 상황]
+09:00~09:15 버킷 → 09:20에 집계 완료
+09:25에 09:10 데이터 도착 → 이미 집계됨, 어떻게?
+```
+
+**처리 방법**:
+
+| 방법 | 장점 | 단점 | 적합한 경우 |
+|------|------|------|------------|
+| **재집계** | 정확 | 비용 높음 | 금융, 과금 |
+| **보정 테이블** | 빠름 | 조회 복잡 | 대시보드 |
+| **무시** | 단순 | 부정확 | SLA 허용 시 |
+
+```kotlin
+// 방법 1: 해당 버킷 재집계
+@Scheduled(cron = "0 30 * * * *")  // 매시 30분 (늦은 데이터 대기 후)
+fun reprocessLateData() {
+    val lateData = rawRepository.findLateArrivals(Duration.ofHours(1))
+    val affectedBuckets = lateData.map { it.timestamp.truncateTo15Min() }.distinct()
+
+    affectedBuckets.forEach { bucket ->
+        val recalculated = rawRepository.aggregateBucket(bucket)
+        aggregatedRepository.upsert(recalculated)
+    }
+}
+
+// 방법 2: 보정 테이블에 델타 저장
+fun handleLateArrival(data: RawData) {
+    val bucket = data.timestamp.truncateTo15Min()
+    val existing = aggregatedRepository.find(bucket)
+
+    if (existing != null) {
+        // 원본 수정 대신 보정치 저장
+        correctionRepository.save(Correction(bucket, data.value))
+    }
+}
+```
+
+### 도구별 Late Data 지원
+
+| 도구 | 메커니즘 | 설정 |
+|------|----------|------|
+| **Flink** | `allowedLateness()` + Side Output | 지연 허용 시간, 별도 스트림으로 출력 |
+| **Kafka Streams** | Grace Period | `TimeWindows.ofSizeWithNoGrace()` vs `ofSizeAndGrace()` |
+| **Scheduled Job** | 재처리 배치 | 별도 스케줄 구현 |
+| **TimescaleDB** | Refresh Policy | `start_offset`으로 재집계 범위 지정 |
+
+**Flink Late Data 처리**:
+
+```java
+OutputTag<Telemetry> lateDataTag = new OutputTag<>("late-data") {};
+
+SingleOutputStreamOperator<Aggregated> result = stream
+    .keyBy(Telemetry::getDeviceId)
+    .window(TumblingEventTimeWindows.of(Time.minutes(15)))
+    .allowedLateness(Time.minutes(30))  // 30분까지 늦은 데이터 허용
+    .sideOutputLateData(lateDataTag)     // 그 이후는 별도 처리
+    .aggregate(new Aggregator());
+
+// 30분 넘게 늦은 데이터 → 별도 재처리
+DataStream<Telemetry> lateStream = result.getSideOutput(lateDataTag);
+lateStream.addSink(new LateDataHandler());
+```
+
+**TimescaleDB Refresh Policy**:
+
+```sql
+-- 1시간 전까지의 데이터를 재집계 (늦은 도착 대응)
+SELECT add_continuous_aggregate_policy('data_15m',
+    start_offset => INTERVAL '1 hour',   -- 1시간 전부터
+    end_offset => INTERVAL '15 minutes', -- 15분 전까지
+    schedule_interval => INTERVAL '15 minutes'
+);
+```
+
+### 부분 윈도우 처리
+
+버킷이 아직 완료되지 않았을 때 조회하면 불완전한 데이터가 반환된다.
+
+```kotlin
+// 현재 진행 중인 버킷은 제외
+fun getCompletedBuckets(deviceId: String, to: Instant): List<AggregatedData> {
+    val lastCompleteBucket = to.truncateTo15Min().minus(15, ChronoUnit.MINUTES)
+    return repository.findBefore(deviceId, lastCompleteBucket)
+}
+
+// 또는 completeness 필드로 필터링
+fun getReliableData(deviceId: String): List<AggregatedData> {
+    return repository.findAll(deviceId)
+        .filter { it.completeness >= 0.8 }  // 80% 이상만
+}
+```
 
 ---
 
