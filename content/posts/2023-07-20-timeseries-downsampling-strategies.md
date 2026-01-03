@@ -132,7 +132,7 @@ streamsBuilder.stream<String, Telemetry>("telemetry")
 **장점**: Exactly-once 보장, 상태 관리 내장
 **단점**: Kafka 생태계에 종속
 
-### 4. Apache Flink (대규모)
+### 4. Apache Flink (실시간 대규모)
 
 대용량 실시간 처리에 적합하다.
 
@@ -149,7 +149,82 @@ stream
 **장점**: 대규모 처리, 이벤트 시간 기반 정확한 윈도우
 **단점**: 운영 복잡도 높음, 별도 클러스터 필요
 
-### 5. DB 네이티브 집계 (권장)
+### 5. Airflow + Spark (배치 대규모)
+
+Airflow가 스케줄링, Spark가 처리를 담당한다. 데이터 레이크 환경에서 표준.
+
+```python
+# Airflow DAG
+@dag(schedule_interval="*/15 * * * *")
+def telemetry_rollup():
+
+    @task
+    def run_spark_job():
+        spark_submit(
+            application="s3://jobs/telemetry_rollup.py",
+            conf={"spark.sql.shuffle.partitions": "200"}
+        )
+
+    run_spark_job()
+```
+
+```python
+# Spark Job (telemetry_rollup.py)
+from pyspark.sql import functions as F
+
+df = spark.read.parquet("s3://data/telemetry/raw/")
+
+aggregated = df \
+    .withColumn("bucket", F.window("timestamp", "15 minutes")) \
+    .groupBy("device_id", "bucket") \
+    .agg(
+        F.avg("value").alias("avg_value"),
+        F.min("value").alias("min_value"),
+        F.max("value").alias("max_value"),
+        F.count("*").alias("sample_count")
+    )
+
+aggregated.write.mode("append").parquet("s3://data/telemetry/15m/")
+```
+
+**장점**: 대용량 배치에 최적, 재처리 용이, 데이터 레이크 통합
+**단점**: 실시간 불가 (분~시간 지연), 인프라 비용
+
+### 6. Databricks (Spark + Delta Lake)
+
+Databricks는 Spark + Delta Lake + 관리형 인프라를 제공한다.
+
+```python
+# Delta Live Tables (선언적 파이프라인)
+@dlt.table
+def telemetry_15m():
+    return (
+        dlt.read("telemetry_raw")
+        .withColumn("bucket", F.window("timestamp", "15 minutes"))
+        .groupBy("device_id", "bucket")
+        .agg(
+            F.avg("value").alias("avg_value"),
+            F.min("value").alias("min_value"),
+            F.max("value").alias("max_value")
+        )
+    )
+```
+
+```sql
+-- Databricks SQL로도 가능
+CREATE OR REFRESH STREAMING LIVE TABLE telemetry_15m AS
+SELECT
+    window(timestamp, '15 minutes') AS bucket,
+    device_id,
+    avg(value) AS avg_value
+FROM STREAM(telemetry_raw)
+GROUP BY bucket, device_id;
+```
+
+**장점**: 관리형 인프라, Delta Lake ACID, Auto-scaling
+**단점**: 비용 높음, 벤더 종속
+
+### 7. DB 네이티브 집계 (권장)
 
 데이터베이스가 자동으로 집계한다. 코드가 가장 적다.
 
@@ -268,13 +343,15 @@ val completedBucketEnd = bucketEnd.minus(15, ChronoUnit.MINUTES)
 
 ## 방식 비교
 
-| 방식 | 규모 | 지연 | 복잡도 | 정확성 |
-|------|:----:|:----:|:------:|:------:|
-| Scheduled Job | 소~중 | 분 | 낮음 | 중 |
-| Kafka Consumer | 중~대 | 초~분 | 중 | 중 |
-| Kafka Streams | 중~대 | 초 | 중 | 높음 |
-| Flink | 대 | 초 | 높음 | 높음 |
-| DB 네이티브 | 소~대 | 분 | 낮음 | 높음 |
+| 방식 | 규모 | 지연 | 복잡도 | 적합한 환경 |
+|------|:----:|:----:|:------:|------------|
+| Scheduled Job | 소~중 | 분 | 낮음 | Spring 백엔드 |
+| Kafka Consumer | 중~대 | 초~분 | 중 | Kafka 사용 중 |
+| Kafka Streams | 중~대 | 초 | 중 | Kafka 생태계 |
+| Flink | 대 | 초 | 높음 | 실시간 필수 |
+| Airflow + Spark | 대 | 분~시간 | 중 | 데이터 레이크 |
+| Databricks | 대 | 분 | 낮음 | 관리형 원하면 |
+| DB 네이티브 | 소~대 | 분 | 낮음 | 시계열 DB 사용 |
 
 ---
 
@@ -285,7 +362,31 @@ val completedBucketEnd = bucketEnd.minus(15, ChronoUnit.MINUTES)
 | 빠른 구현, 소규모 | Scheduled Job + PostgreSQL |
 | 중규모, Kafka 사용 중 | Kafka Streams |
 | 대규모, 실시간 필수 | Flink |
-| 시계열 DB 도입 가능 | **TimescaleDB Continuous Aggregates** |
+| 대규모, 배치 중심 | **Airflow + Spark** |
+| 데이터 레이크, 관리형 | **Databricks** |
+| 시계열 DB 도입 가능 | TimescaleDB Continuous Aggregates |
 | OLAP 분석 중심 | ClickHouse Materialized View |
 
-**Best Practice**: 가능하면 **DB 네이티브 집계**를 사용한다. 코드가 적고, 트랜잭션이 보장되며, 운영 부담이 적다. TimescaleDB의 Continuous Aggregates가 가장 균형 잡힌 선택이다.
+### 환경별 선택 가이드
+
+```mermaid
+flowchart TD
+    A["데이터 규모?"] -->|소~중| B["Scheduled Job"]
+    A -->|대규모| C["인프라 환경?"]
+
+    C -->|"데이터 레이크 (S3/GCS)"| D["Airflow + Spark"]
+    C -->|"관리형 원함"| E["Databricks"]
+    C -->|"Kafka 중심"| F["실시간 필요?"]
+    C -->|"시계열 DB"| G["DB 네이티브"]
+
+    F -->|Yes| H["Flink"]
+    F -->|No| I["Kafka Streams"]
+
+    style D fill:#e3f2fd
+    style E fill:#e3f2fd
+    style G fill:#e8f5e9
+```
+
+**Best Practice**:
+- **백엔드 서비스**: DB 네이티브 집계 (코드 적음, 트랜잭션 보장)
+- **데이터 플랫폼**: Airflow + Spark 또는 Databricks (재처리 용이, 확장성)
