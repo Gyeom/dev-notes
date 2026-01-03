@@ -1,12 +1,78 @@
 ---
 title: "시계열 데이터 다운샘플링 전략"
 date: 2023-07-20
-tags: ["시계열", "TimescaleDB", "Kafka", "Flink", "성능최적화"]
+tags: ["시계열", "TimescaleDB", "Kafka", "Flink", "Spark", "Airflow", "성능최적화"]
 categories: ["Backend"]
-summary: "1분 데이터를 15분 단위로 집계하는 다양한 방법. Batch Roll-up, Stream Processing, DB 네이티브 집계를 비교한다."
+summary: "1분 데이터를 15분 단위로 집계하는 방법. Spring 내부 처리부터 Flink/Spark 분리 아키텍처까지."
 ---
 
 1분 간격의 시계열 데이터를 15분, 1시간 단위로 집계해야 할 때가 있다. 대시보드 성능 최적화, 장기 보관 비용 절감 등이 목적이다.
+
+---
+
+## 도구 분류: 오케스트레이션 vs 처리 엔진
+
+먼저 각 도구의 역할을 이해해야 한다.
+
+| 분류 | 도구 | 역할 |
+|------|------|------|
+| **오케스트레이션** | Airflow | 언제, 어떤 순서로 실행할지 스케줄링 |
+| **처리 엔진 (배치)** | Spark, Databricks | 대용량 데이터 집계 |
+| **처리 엔진 (스트림)** | Flink, Kafka Streams | 실시간 데이터 집계 |
+| **API 서빙** | Spring Boot | 집계된 데이터를 API로 제공 |
+
+**Airflow는 스케줄러**, Spark/Flink는 **실행 엔진**이다. 보통 조합해서 사용한다.
+
+---
+
+## 아키텍처 패턴
+
+### Spring 내부에서 처리 (소~중규모)
+
+Spring Boot 애플리케이션 안에서 모든 처리를 한다.
+
+```mermaid
+flowchart LR
+    A["데이터 수집"] --> B["Spring Boot"]
+    B --> C["Scheduled Job<br/>or Kafka Streams"]
+    C --> D["DB"]
+    D --> E["API 응답"]
+
+    style B fill:#c8e6c9
+```
+
+- **Scheduled Job**: `@Scheduled`로 주기적 집계
+- **Kafka Streams**: Spring 앱 내에서 스트림 처리
+
+**적합**: 데이터 < 100만 건/일, 팀이 작음
+
+### 처리 엔진 분리 (대규모)
+
+Flink/Spark가 집계하고, Spring은 결과만 서빙한다.
+
+```mermaid
+flowchart LR
+    subgraph "데이터 수집"
+        A["IoT / 서비스"] --> B["Kafka"]
+    end
+
+    subgraph "처리 (별도 클러스터)"
+        B --> C["Flink / Spark"]
+        C --> D["DB / Redis"]
+    end
+
+    subgraph "서빙 (Spring)"
+        D --> E["Spring API"]
+        E --> F["Dashboard"]
+    end
+
+    style C fill:#bbdefb
+    style E fill:#c8e6c9
+```
+
+**Flink/Spark와 Spring은 별도 애플리케이션**이고, **저장소를 통해 연결**된다.
+
+**적합**: 데이터 > 100만 건/일, 실시간 필수, 전담 데이터팀 있음
 
 ---
 
@@ -23,26 +89,15 @@ summary: "1분 데이터를 15분 단위로 집계하는 다양한 방법. Batch
 
 ---
 
-## 다운샘플링 시점
+## 구현 방법
 
-| 방식 | 적합한 경우 | 지연 |
-|------|-----------|------|
-| Write-time | 집계 패턴 고정, 읽기 많음 | 없음 |
-| Read-time | 유연성 필요, 데이터 적음 | 쿼리 시 |
-| Batch Roll-up | 대용량, 다중 해상도 | 분~시간 |
-| Stream Processing | 실시간 + 대용량 | 초~분 |
+### 1. Scheduled Job (Spring 내부)
 
----
-
-## Batch Roll-up 구현 방법
-
-### 1. Scheduled Job (Spring)
-
-가장 단순한 방식. 중소규모에 적합하다.
+가장 단순한 방식. 소~중규모에 적합하다.
 
 ```kotlin
 @Scheduled(cron = "0 */15 * * * *")  // 매 15분
-@SchedulerLock(name = "rollup-15m", lockAtMostFor = "14m")  // 분산 락
+@SchedulerLock(name = "rollup-15m", lockAtMostFor = "14m")
 fun rollUp15Minutes() {
     val bucketEnd = Instant.now().truncatedTo(ChronoUnit.MINUTES)
     val bucketStart = bucketEnd.minus(15, ChronoUnit.MINUTES)
@@ -52,186 +107,127 @@ fun rollUp15Minutes() {
 }
 ```
 
-```sql
--- aggregateByBucket 쿼리
-SELECT
-    device_id,
-    date_trunc('hour', timestamp) +
-        INTERVAL '15 min' * (EXTRACT(MINUTE FROM timestamp)::int / 15) AS bucket,
-    AVG(value) AS avg_value,
-    MIN(value) AS min_value,
-    MAX(value) AS max_value,
-    COUNT(*) AS sample_count
-FROM telemetry
-WHERE timestamp >= :start AND timestamp < :end
-GROUP BY device_id, bucket
-```
+**장점**: 구현 단순, 별도 인프라 불필요
+**단점**: 대용량에서 느림, 장애 시 누락 가능
 
-**장점**: 구현 단순, 디버깅 쉬움
-**단점**: 장애 시 누락 가능, 대용량에서 느림
+### 2. Kafka Streams (Spring 내부)
 
-### 2. Kafka Consumer + Windowing
-
-이벤트 기반 처리. 실시간에 가까운 집계가 가능하다.
+Spring Boot 앱 안에서 실행되는 스트림 처리. **별도 클러스터 불필요**.
 
 ```kotlin
-@KafkaListener(topics = ["telemetry"])
-fun consume(records: List<ConsumerRecord<String, Telemetry>>) {
-    records.groupBy { to15MinBucket(it.value().timestamp) }
-        .forEach { (bucket, events) ->
-            val key = "${events.first().value().deviceId}:$bucket"
-
-            // Redis에 증분 집계
-            redisTemplate.opsForHash<String, Double>().increment(key, "sum", events.sumOf { it.value().value })
-            redisTemplate.opsForHash<String, Long>().increment(key, "count", events.size.toLong())
-            redisTemplate.expire(key, Duration.ofHours(2))
-        }
-}
-
-// 별도 Job으로 Redis → DB 플러시
-@Scheduled(fixedDelay = 60_000)
-fun flushToDb() {
-    val keys = redisTemplate.keys("telemetry:*:15m:*")
-    keys.filter { isCompleteBucket(it) }
-        .forEach { key ->
-            val data = redisTemplate.opsForHash<String, Any>().entries(key)
-            aggregatedRepository.save(toAggregatedData(key, data))
-            redisTemplate.delete(key)
-        }
-}
-```
-
-**장점**: 실시간에 가까움, 확장성 좋음
-**단점**: 복잡도 높음, Redis 의존
-
-### 3. Kafka Streams (Tumbling Window)
-
-Kafka Streams의 윈도우 기능을 활용한다.
-
-```kotlin
-val streamsBuilder = StreamsBuilder()
-
-streamsBuilder.stream<String, Telemetry>("telemetry")
-    .groupByKey()
-    .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofMinutes(15)))
-    .aggregate(
-        { AggregateState() },
-        { _, value, state -> state.add(value) },
-        Materialized.with(Serdes.String(), aggregateSerde)
-    )
-    .toStream()
-    .map { windowedKey, state ->
-        KeyValue(
-            "${windowedKey.key()}:${windowedKey.window().start()}",
-            state.toResult()
+@Bean
+fun telemetryStream(builder: StreamsBuilder): KStream<String, Telemetry> {
+    return builder.stream<String, Telemetry>("telemetry")
+        .groupByKey()
+        .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofMinutes(15)))
+        .aggregate(
+            { AggregateState() },
+            { _, value, state -> state.add(value) }
         )
-    }
-    .to("telemetry-15m")
+        .toStream()
+        .map { key, state -> KeyValue(key.key(), state.toResult()) }
+        .through("telemetry-15m")
+}
 ```
 
-**장점**: Exactly-once 보장, 상태 관리 내장
-**단점**: Kafka 생태계에 종속
+**장점**: Exactly-once 보장, Spring과 통합 용이
+**단점**: Kafka 필수, 복잡한 처리는 한계
 
-### 4. Apache Flink (실시간 대규모)
+### 3. Flink (별도 클러스터)
 
-대용량 실시간 처리에 적합하다.
+대용량 실시간 처리. **Spring과 별도 프로젝트**로 운영한다.
 
 ```java
-DataStream<Telemetry> stream = env.addSource(kafkaSource);
+// Flink Job (별도 프로젝트, Spring 아님)
+public class TelemetryRollupJob {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-stream
-    .keyBy(Telemetry::getDeviceId)
-    .window(TumblingEventTimeWindows.of(Time.minutes(15)))
-    .aggregate(new TelemetryAggregator())
-    .addSink(jdbcSink);
+        KafkaSource<Telemetry> source = KafkaSource.<Telemetry>builder()
+            .setBootstrapServers("kafka:9092")
+            .setTopics("telemetry")
+            .build();
+
+        env.fromSource(source, WatermarkStrategy.forMonotonousTimestamps(), "Kafka")
+            .keyBy(Telemetry::getDeviceId)
+            .window(TumblingEventTimeWindows.of(Time.minutes(15)))
+            .aggregate(new TelemetryAggregator())
+            .addSink(JdbcSink.sink(...));  // DB에 저장
+
+        env.execute("Telemetry Rollup");
+    }
+}
 ```
 
-**장점**: 대규모 처리, 이벤트 시간 기반 정확한 윈도우
-**단점**: 운영 복잡도 높음, 별도 클러스터 필요
+**Spring은 DB에서 읽기만 한다**:
 
-### 5. Airflow + Spark (배치 대규모)
+```kotlin
+// Spring API (별도 프로젝트)
+@GetMapping("/telemetry/{deviceId}/15m")
+fun get15MinData(@PathVariable deviceId: String): List<AggregatedTelemetry> {
+    return aggregatedRepository.findByDeviceId(deviceId)  // Flink가 저장한 데이터
+}
+```
 
-Airflow가 스케줄링, Spark가 처리를 담당한다. 데이터 레이크 환경에서 표준.
+**장점**: 대규모 처리, 이벤트 시간 기반, Exactly-once
+**단점**: 별도 클러스터 필요, 운영 복잡
+
+### 4. Airflow + Spark (배치 대규모)
+
+Airflow가 스케줄링, Spark가 처리. 데이터 레이크 환경에서 표준.
 
 ```python
 # Airflow DAG
 @dag(schedule_interval="*/15 * * * *")
 def telemetry_rollup():
-
     @task
     def run_spark_job():
-        spark_submit(
-            application="s3://jobs/telemetry_rollup.py",
-            conf={"spark.sql.shuffle.partitions": "200"}
-        )
-
+        spark_submit(application="s3://jobs/telemetry_rollup.py")
     run_spark_job()
 ```
 
 ```python
-# Spark Job (telemetry_rollup.py)
+# Spark Job
 from pyspark.sql import functions as F
 
 df = spark.read.parquet("s3://data/telemetry/raw/")
-
 aggregated = df \
     .withColumn("bucket", F.window("timestamp", "15 minutes")) \
     .groupBy("device_id", "bucket") \
-    .agg(
-        F.avg("value").alias("avg_value"),
-        F.min("value").alias("min_value"),
-        F.max("value").alias("max_value"),
-        F.count("*").alias("sample_count")
-    )
+    .agg(F.avg("value").alias("avg_value"))
 
 aggregated.write.mode("append").parquet("s3://data/telemetry/15m/")
 ```
 
-**장점**: 대용량 배치에 최적, 재처리 용이, 데이터 레이크 통합
-**단점**: 실시간 불가 (분~시간 지연), 인프라 비용
+**장점**: 대용량 배치 최적, 재처리 용이
+**단점**: 실시간 불가, 인프라 비용
 
-### 6. Databricks (Spark + Delta Lake)
+### 5. Databricks (관리형)
 
-Databricks는 Spark + Delta Lake + 관리형 인프라를 제공한다.
+Spark + Delta Lake + 관리형 인프라.
 
 ```python
-# Delta Live Tables (선언적 파이프라인)
+# Delta Live Tables
 @dlt.table
 def telemetry_15m():
     return (
         dlt.read("telemetry_raw")
         .withColumn("bucket", F.window("timestamp", "15 minutes"))
         .groupBy("device_id", "bucket")
-        .agg(
-            F.avg("value").alias("avg_value"),
-            F.min("value").alias("min_value"),
-            F.max("value").alias("max_value")
-        )
+        .agg(F.avg("value").alias("avg_value"))
     )
 ```
 
-```sql
--- Databricks SQL로도 가능
-CREATE OR REFRESH STREAMING LIVE TABLE telemetry_15m AS
-SELECT
-    window(timestamp, '15 minutes') AS bucket,
-    device_id,
-    avg(value) AS avg_value
-FROM STREAM(telemetry_raw)
-GROUP BY bucket, device_id;
-```
-
-**장점**: 관리형 인프라, Delta Lake ACID, Auto-scaling
+**장점**: 관리형, Auto-scaling, Delta Lake ACID
 **단점**: 비용 높음, 벤더 종속
 
-### 7. DB 네이티브 집계 (권장)
+### 6. DB 네이티브 (권장)
 
-데이터베이스가 자동으로 집계한다. 코드가 가장 적다.
+데이터베이스가 자동으로 집계. 코드 최소화.
 
-#### TimescaleDB Continuous Aggregates
+**TimescaleDB Continuous Aggregates**:
 
 ```sql
--- 자동 집계 뷰 생성
 CREATE MATERIALIZED VIEW telemetry_15m
 WITH (timescaledb.continuous) AS
 SELECT
@@ -239,49 +235,53 @@ SELECT
     device_id,
     AVG(value) AS avg_value,
     MIN(value) AS min_value,
-    MAX(value) AS max_value,
-    COUNT(*) AS sample_count
+    MAX(value) AS max_value
 FROM telemetry
 GROUP BY bucket, device_id;
 
--- 자동 갱신 정책 (15분마다, 1시간 전 데이터까지)
+-- 자동 갱신 정책
 SELECT add_continuous_aggregate_policy('telemetry_15m',
     start_offset => INTERVAL '1 hour',
     end_offset => INTERVAL '15 minutes',
     schedule_interval => INTERVAL '15 minutes');
-
--- 원본 데이터 자동 삭제 (7일 후)
-SELECT add_retention_policy('telemetry', INTERVAL '7 days');
-```
-
-#### ClickHouse Materialized View
-
-```sql
--- 원본 테이블
-CREATE TABLE telemetry (
-    timestamp DateTime,
-    device_id String,
-    value Float64
-) ENGINE = MergeTree()
-ORDER BY (device_id, timestamp);
-
--- 자동 집계 (INSERT 시 자동 실행)
-CREATE MATERIALIZED VIEW telemetry_15m
-ENGINE = SummingMergeTree()
-ORDER BY (device_id, bucket)
-AS SELECT
-    toStartOfFifteenMinutes(timestamp) AS bucket,
-    device_id,
-    avg(value) AS avg_value,
-    min(value) AS min_value,
-    max(value) AS max_value,
-    count() AS sample_count
-FROM telemetry
-GROUP BY bucket, device_id;
 ```
 
 **장점**: 코드 최소, 안정적, 트랜잭션 보장
-**단점**: 특정 DB에 종속
+**단점**: 특정 DB 종속
+
+---
+
+## Flink/Spark와 Spring 연동 패턴
+
+### 패턴 1: 처리 엔진 → DB → Spring (가장 일반적)
+
+```
+Kafka → Flink → PostgreSQL → Spring API
+```
+
+- Flink가 집계 후 DB에 저장
+- Spring은 DB에서 읽기만
+- **단순하고 안정적**
+
+### 패턴 2: 처리 엔진 → Kafka → Spring
+
+```
+Kafka (raw) → Flink → Kafka (aggregated) → Spring Consumer → DB
+```
+
+- Flink가 결과를 Kafka 토픽으로 발행
+- Spring이 구독해서 DB에 저장
+- **다른 서비스도 집계 결과 구독 가능**
+
+### 패턴 3: 처리 엔진 → Redis → Spring (실시간)
+
+```
+Kafka → Flink → Redis → Spring API → WebSocket → Dashboard
+```
+
+- 최근 15분만 Redis에 유지
+- 초저지연 조회
+- **실시간 모니터링에 적합**
 
 ---
 
@@ -289,104 +289,80 @@ GROUP BY bucket, device_id;
 
 ```mermaid
 flowchart LR
-    A["원본 1분"] -->|7일| B["삭제"]
-    A -->|집계| C["15분 테이블"]
-    C -->|30일| D["삭제"]
-    C -->|집계| E["1시간 테이블"]
-    E -->|1년| F["삭제"]
-    E -->|집계| G["1일 테이블"]
-    G -->|영구| H["보관"]
+    A["원본 1분"] -->|7일 보관| B["삭제"]
+    A -->|집계| C["15분"]
+    C -->|30일 보관| D["삭제"]
+    C -->|집계| E["1시간"]
+    E -->|1년 보관| F["삭제"]
+    E -->|집계| G["1일"]
+    G -->|영구 보관| H["유지"]
 ```
 
-```sql
--- 조회 시 기간에 따라 테이블 선택
-SELECT * FROM telemetry_15m WHERE timestamp > NOW() - INTERVAL '7 days';
-SELECT * FROM telemetry_1h WHERE timestamp > NOW() - INTERVAL '30 days';
-SELECT * FROM telemetry_1d WHERE timestamp > NOW() - INTERVAL '1 year';
-```
+조회 시 기간에 따라 적절한 해상도 테이블을 선택한다.
 
 ---
 
 ## Edge Cases 처리
 
-### 결측치 (Missing Data)
-
-```kotlin
-data class AggregatedData(
-    val bucket: Instant,
-    val avg: Double?,
-    val count: Int,
-    val completeness: Double  // count / 15 (expected)
-)
-
-// 대시보드에서 completeness < 0.8 이면 경고 표시
-```
-
-### 늦게 도착한 데이터 (Late Arrival)
-
-```kotlin
-// Flink: Watermark + Allowed Lateness
-.window(TumblingEventTimeWindows.of(Time.minutes(15)))
-.allowedLateness(Time.minutes(5))  // 5분까지 늦은 데이터 허용
-.sideOutputLateData(lateOutputTag)  // 그 이후는 별도 처리
-```
-
-### 부분 윈도우 (Partial Window)
-
-```kotlin
-// 현재 진행 중인 버킷은 집계하지 않음
-val bucketEnd = now.truncatedTo(ChronoUnit.MINUTES)
-val completedBucketEnd = bucketEnd.minus(15, ChronoUnit.MINUTES)
-```
+| 케이스 | 처리 방법 |
+|--------|----------|
+| **결측치** | `completeness` 필드로 신뢰도 표시 |
+| **늦은 도착** | Flink `allowedLateness()`, 별도 재처리 |
+| **부분 윈도우** | 완료된 버킷만 집계 |
 
 ---
 
 ## 방식 비교
 
-| 방식 | 규모 | 지연 | 복잡도 | 적합한 환경 |
-|------|:----:|:----:|:------:|------------|
-| Scheduled Job | 소~중 | 분 | 낮음 | Spring 백엔드 |
-| Kafka Consumer | 중~대 | 초~분 | 중 | Kafka 사용 중 |
-| Kafka Streams | 중~대 | 초 | 중 | Kafka 생태계 |
-| Flink | 대 | 초 | 높음 | 실시간 필수 |
-| Airflow + Spark | 대 | 분~시간 | 중 | 데이터 레이크 |
-| Databricks | 대 | 분 | 낮음 | 관리형 원하면 |
-| DB 네이티브 | 소~대 | 분 | 낮음 | 시계열 DB 사용 |
+| 방식 | 규모 | 지연 | 복잡도 | 실행 환경 |
+|------|:----:|:----:|:------:|----------|
+| Scheduled Job | 소~중 | 분 | 낮음 | Spring 내부 |
+| Kafka Streams | 중 | 초 | 중 | Spring 내부 |
+| Flink | 대 | 초 | 높음 | **별도 클러스터** |
+| Airflow + Spark | 대 | 분~시간 | 중 | **별도 클러스터** |
+| Databricks | 대 | 분 | 낮음 | **관리형** |
+| DB 네이티브 | 소~대 | 분 | 낮음 | DB |
 
 ---
 
-## 권장 조합
-
-| 상황 | 권장 방식 |
-|------|----------|
-| 빠른 구현, 소규모 | Scheduled Job + PostgreSQL |
-| 중규모, Kafka 사용 중 | Kafka Streams |
-| 대규모, 실시간 필수 | Flink |
-| 대규모, 배치 중심 | **Airflow + Spark** |
-| 데이터 레이크, 관리형 | **Databricks** |
-| 시계열 DB 도입 가능 | TimescaleDB Continuous Aggregates |
-| OLAP 분석 중심 | ClickHouse Materialized View |
-
-### 환경별 선택 가이드
+## 선택 가이드
 
 ```mermaid
 flowchart TD
-    A["데이터 규모?"] -->|소~중| B["Scheduled Job"]
-    A -->|대규모| C["인프라 환경?"]
+    A["데이터 규모?"] -->|"소~중 (< 100만/일)"| B["Spring 내부"]
+    A -->|"대규모"| C["별도 처리 엔진"]
 
-    C -->|"데이터 레이크 (S3/GCS)"| D["Airflow + Spark"]
-    C -->|"관리형 원함"| E["Databricks"]
-    C -->|"Kafka 중심"| F["실시간 필요?"]
-    C -->|"시계열 DB"| G["DB 네이티브"]
+    B --> B1["Scheduled Job"]
+    B --> B2["Kafka Streams"]
+    B --> B3["DB 네이티브"]
 
-    F -->|Yes| H["Flink"]
-    F -->|No| I["Kafka Streams"]
+    C --> D["실시간 필요?"]
+    D -->|Yes| E["Flink"]
+    D -->|No| F["배치 환경?"]
 
-    style D fill:#e3f2fd
-    style E fill:#e3f2fd
-    style G fill:#e8f5e9
+    F -->|"데이터 레이크"| G["Airflow + Spark"]
+    F -->|"관리형 원함"| H["Databricks"]
+
+    style B fill:#c8e6c9
+    style B1 fill:#c8e6c9
+    style B2 fill:#c8e6c9
+    style B3 fill:#c8e6c9
+    style E fill:#bbdefb
+    style G fill:#bbdefb
+    style H fill:#bbdefb
 ```
 
-**Best Practice**:
-- **백엔드 서비스**: DB 네이티브 집계 (코드 적음, 트랜잭션 보장)
-- **데이터 플랫폼**: Airflow + Spark 또는 Databricks (재처리 용이, 확장성)
+## 정리
+
+| 상황 | 권장 |
+|------|------|
+| 소규모, 빠른 구현 | **Scheduled Job** or **DB 네이티브** |
+| 중규모, Kafka 사용 중 | **Kafka Streams** (Spring 내부) |
+| 대규모, 실시간 필수 | **Flink** (별도 클러스터) |
+| 대규모, 배치 중심 | **Airflow + Spark** |
+| 관리형 원함 | **Databricks** |
+
+**핵심**:
+- 소~중규모는 **Spring 내부에서 처리**
+- 대규모는 **처리 엔진 분리** (Flink/Spark)
+- Flink/Spark는 Spring과 **별도 애플리케이션**, 저장소로 연결
