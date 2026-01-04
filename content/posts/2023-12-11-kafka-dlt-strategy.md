@@ -77,61 +77,6 @@ fun consume(record: ConsumerRecord<String, String>) {
 
 ---
 
-## DLT 처리 전략
-
-### @DltHandler로 DLT 메시지 처리
-
-```kotlin
-@DltHandler
-fun processDltMessage(
-    record: ConsumerRecord<String, String>,
-    @Header(KafkaHeaders.RECEIVED_TOPIC) topic: String,
-    @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
-    @Header(KafkaHeaders.OFFSET) offset: Long,
-    @Header(KafkaHeaders.EXCEPTION_MESSAGE) errorMessage: String
-) {
-    log.error("""
-        DLT 메시지 수신
-        - Topic: $topic
-        - Partition: $partition
-        - Offset: $offset
-        - Error: $errorMessage
-        - Value: ${record.value()}
-    """.trimIndent())
-
-    // 알림 발송, DB 저장 등
-    alertService.sendDltAlert(topic, errorMessage)
-    dltRepository.save(DltRecord(topic, partition, offset, record.value(), errorMessage))
-}
-```
-
-### DLT 처리 실패 전략
-
-DLT 처리 자체가 실패할 경우 두 가지 옵션이 있다.
-
-| 전략 | 동작 | 사용 시점 |
-|------|------|----------|
-| `ALWAYS_RETRY_ON_ERROR` | DLT로 다시 전송 (기본값) | 일시적 오류가 예상될 때 |
-| `FAIL_ON_ERROR` | 처리 중단 | DLT 처리가 반드시 성공해야 할 때 |
-
-```kotlin
-@RetryableTopic(
-    dltProcessingFailureStrategy = DltStrategy.FAIL_ON_ERROR
-)
-```
-
-### DLT 없이 운영하기
-
-특정 상황에서는 DLT 없이 재시도만 수행할 수 있다.
-
-```kotlin
-@RetryableTopic(
-    dltProcessingFailureStrategy = DltStrategy.NO_DLT
-)
-```
-
----
-
 ## DLT + DLQ 이중 구조
 
 실무에서는 **DLT(재처리용)**와 **DLQ(분석용)** 이중 구조가 효과적이다. 각각의 역할을 명확히 분리하여 운영한다.
@@ -146,9 +91,14 @@ flowchart LR
     C --> G["재실패 시 DLQ 저장"]
 ```
 
-### DLT: 임시 보관 및 재처리
+**DLT와 DLQ 역할**
 
-Kafka Topic으로 단기간 메시지를 보관하고 자동 재처리한다.
+- **DLT (Topic)**: 일시적 저장, Spring Kafka가 자동 관리
+- **DLQ (DB)**: 영구 저장, SQL로 분석 및 모니터링
+
+### @DltHandler 구현
+
+DLT 메시지를 DLQ에 저장하고, 실패 시 즉시 알림을 발송한다.
 
 ```kotlin
 @DltHandler
@@ -156,156 +106,29 @@ fun processDltMessage(
     record: ConsumerRecord<String, String>,
     @Header(KafkaHeaders.EXCEPTION_MESSAGE) errorMessage: String
 ) {
-    // 1. DLQ에 영구 저장 (분석용)
-    dlqService.save(record, errorMessage)
-    
-    // 2. 재처리 가능 여부 판단
-    if (shouldRetry(errorMessage)) {
-        // 3. 잠시 후 재시도 (DLT에서 자동 처리)
-        log.info("메시지가 DLT에서 재처리됩니다: ${record.key()}")
-        return
-    }
-    
-    // 4. 재처리 불가능한 경우 알림
-    alertService.sendAlert("재처리 불가능한 메시지", record.value())
-}
-```
-
-### DLQ: PostgreSQL 영구 보관
-
-분석과 모니터링을 위해 PostgreSQL에 영구 저장한다.
-
-```sql
-CREATE TABLE dead_letter_queue (
-    id BIGSERIAL PRIMARY KEY,
-    topic VARCHAR(255) NOT NULL,
-    partition_id INTEGER,
-    offset_value BIGINT,
-    message_key VARCHAR(500),
-    message_value TEXT NOT NULL,
-    error_type VARCHAR(255),
-    error_message TEXT,
-    retry_count INTEGER DEFAULT 0,
-    status VARCHAR(50) DEFAULT 'FAILED',  -- FAILED, REPROCESSING, RESOLVED
-    created_at TIMESTAMP DEFAULT NOW(),
-    resolved_at TIMESTAMP
-);
-
-CREATE INDEX idx_dlq_topic_status ON dead_letter_queue(topic, status);
-CREATE INDEX idx_dlq_error_type ON dead_letter_queue(error_type);
-CREATE INDEX idx_dlq_created_at ON dead_letter_queue(created_at);
-```
-
-### DLQ 서비스 구현
-
-```kotlin
-@Service
-class DlqService(
-    private val dlqRepository: DlqRepository
-) {
-    fun save(record: ConsumerRecord<String, String>, errorMessage: String) {
-        val dlq = DlqEntity(
-            topic = record.topic(),
-            partitionId = record.partition(),
-            offsetValue = record.offset(),
-            messageKey = record.key(),
-            messageValue = record.value(),
-            errorType = extractErrorType(errorMessage),
-            errorMessage = errorMessage
+    try {
+        // 1. DLQ에 저장 시도
+        dlqService.save(record, errorMessage)
+        log.info("DLQ에 저장 완료: ${record.key()}")
+        
+    } catch (e: Exception) {
+        // 2. DB 저장 실패 시 즉시 알림
+        slackService.sendCriticalAlert(
+            title = "🚨 DLQ 저장 실패",
+            message = """
+                Topic: ${record.topic()}
+                Key: ${record.key()}
+                Message: ${record.value()}
+                Error: ${e.message}
+            """.trimIndent()
         )
-        dlqRepository.save(dlq)
-    }
-    
-    private fun extractErrorType(errorMessage: String): String {
-        return when {
-            errorMessage.contains("ValidationException") -> "VALIDATION_ERROR"
-            errorMessage.contains("SerializationException") -> "SERIALIZATION_ERROR"
-            errorMessage.contains("TimeoutException") -> "TIMEOUT_ERROR"
-            else -> "UNKNOWN_ERROR"
-        }
+        
+        // 3. 로그에도 기록
+        log.error("DLQ save failed for message: ${record.value()}", e)
     }
 }
 ```
 
-
----
-
-## 예외 분류 전략
-
-재시도할 예외와 즉시 DLT로 보낼 예외를 명확히 구분해야 한다.
-
-### Retryable 예외
-
-일시적이며 재시도로 해결될 가능성이 있는 예외다.
-
-- 네트워크 타임아웃
-- 외부 API 일시 장애
-- 데이터베이스 연결 실패
-- 리소스 부족 (Rate Limit)
-
-### Non-Retryable 예외
-
-재시도해도 해결되지 않는 예외다.
-
-- 메시지 역직렬화 실패 (`DeserializationException`)
-- 데이터 유효성 검증 실패
-- 비즈니스 로직 오류
-- 메시지 형식 불일치 (`MessageConversionException`)
-
-```kotlin
-@RetryableTopic(
-    exclude = [
-        DeserializationException::class,
-        MessageConversionException::class,
-        ValidationException::class,
-        BusinessRuleViolationException::class
-    ]
-)
-```
-
-> Spring Kafka는 `DeserializationException`, `MessageConversionException`, `ConversionException`을 기본적으로 fatal 예외로 처리하여 `ALWAYS_RETRY_ON_ERROR`에서도 재시도하지 않는다.
-
----
-
-## DLT 자동 시작 제어
-
-DLT 핸들러를 수동으로 시작하도록 설정할 수 있다.
-
-```kotlin
-@RetryableTopic(
-    autoStartDltHandler = false
-)
-```
-
-이후 `KafkaListenerEndpointRegistry`로 필요할 때 시작한다.
-
-```kotlin
-@EventListener(ApplicationReadyEvent::class)
-fun onApplicationReady() {
-    if (shouldStartDltHandler()) {
-        registry.getListenerContainer("order-dlt-handler")?.start()
-    }
-}
-```
-
----
-
-## 정리
-
-Kafka 메시지 처리 실패 관리를 위한 실용적 전략을 정리한다.
-
-| 구성 요소 | 역할 |
-|----------|------|
-| `@RetryableTopic` | 선언적 재시도 설정 |
-| `@DltHandler` | DLT 메시지 처리 및 DLQ 저장 |
-| `DLT (Topic)` | 임시 보관 및 자동 재처리 |
-| `DLQ (PostgreSQL)` | 영구 저장 및 분석 |
-
-**핵심 원칙**
-
-1. **이중 구조**: DLT(재처리) + DLQ(분석) 역할 분리
-2. **예외 분류**: Retryable vs Non-Retryable 명확히 구분
-3. **간단한 저장**: PostgreSQL에 저장하여 SQL로 분석
 
 ---
 
