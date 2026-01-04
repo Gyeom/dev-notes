@@ -170,12 +170,6 @@ flowchart TB
 - 네트워크 왕복 감소 → 처리량 증가
 - 단, 데이터가 적을 때 지연 발생 (fetch.max.wait.ms까지 대기)
 
-**대용량 처리에서 fetch.min.bytes 튜닝이 필수인가?**
-
-필수는 아니다. 분당 50만 건처럼 데이터가 빠르게 들어오는 환경에서는 기본값(1byte)으로도 버퍼가 금방 채워진다. fetch.min.bytes는 **네트워크 효율 최적화** 수준이다.
-
-> **주의**: `fetch.max.wait.ms`는 반드시 `max.poll.interval.ms`보다 작아야 한다. 그렇지 않으면 브로커가 Consumer를 비정상으로 판단하여 Rebalancing이 발생한다.
-
 ### Batch Listener 구현
 
 ```kotlin
