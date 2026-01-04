@@ -132,106 +132,101 @@ DLT 처리 자체가 실패할 경우 두 가지 옵션이 있다.
 
 ---
 
-## 분산 환경에서 리스너 동적 제어
+## DLT + DLQ 이중 구조
 
-DLT에 쌓인 메시지를 분석하고 코드를 수정한 후, 리스너를 재시작하여 재처리해야 할 때가 있다. 분산 환경에서는 여러 인스턴스가 동시에 운영되므로, Kafka 토픽을 통해 리스너를 제어하는 방식이 효과적이다.
+실무에서는 **DLT(재처리용)**와 **DLQ(분석용)** 이중 구조가 효과적이다. 각각의 역할을 명확히 분리하여 운영한다.
 
-### 제어 API 구현
-
-```kotlin
-@RestController
-@RequestMapping("/v1/kafka")
-class KafkaControlController(
-    private val kafkaControlService: KafkaControlService
-) {
-    @PostMapping("/control")
-    fun control(@RequestBody request: ListenerControlRequest): ResponseEntity<String> {
-        return try {
-            kafkaControlService.broadcastControl(request)
-            ResponseEntity.ok("Control message sent")
-        } catch (e: Exception) {
-            log.error("Error sending control message", e)
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error: ${e.message}")
-        }
-    }
-}
-
-data class ListenerControlRequest(
-    val listenerId: String,
-    val action: ListenerAction  // START, STOP
-)
-
-enum class ListenerAction { START, STOP }
+```mermaid
+flowchart LR
+    A["실패 메시지"] --> B["DLT Topic"]
+    B --> C["자동 재처리"]
+    B --> D["DLQ Table"]
+    D --> E["분석 & 모니터링"]
+    C --> F["성공 시 처리 완료"]
+    C --> G["재실패 시 DLQ 저장"]
 ```
 
-### 제어 메시지 브로드캐스트
+### DLT: 임시 보관 및 재처리
 
-모든 파티션에 제어 메시지를 발행하여 모든 인스턴스가 수신하도록 한다.
+Kafka Topic으로 단기간 메시지를 보관하고 자동 재처리한다.
+
+```kotlin
+@DltHandler
+fun processDltMessage(
+    record: ConsumerRecord<String, String>,
+    @Header(KafkaHeaders.EXCEPTION_MESSAGE) errorMessage: String
+) {
+    // 1. DLQ에 영구 저장 (분석용)
+    dlqService.save(record, errorMessage)
+    
+    // 2. 재처리 가능 여부 판단
+    if (shouldRetry(errorMessage)) {
+        // 3. 잠시 후 재시도 (DLT에서 자동 처리)
+        log.info("메시지가 DLT에서 재처리됩니다: ${record.key()}")
+        return
+    }
+    
+    // 4. 재처리 불가능한 경우 알림
+    alertService.sendAlert("재처리 불가능한 메시지", record.value())
+}
+```
+
+### DLQ: PostgreSQL 영구 보관
+
+분석과 모니터링을 위해 PostgreSQL에 영구 저장한다.
+
+```sql
+CREATE TABLE dead_letter_queue (
+    id BIGSERIAL PRIMARY KEY,
+    topic VARCHAR(255) NOT NULL,
+    partition_id INTEGER,
+    offset_value BIGINT,
+    message_key VARCHAR(500),
+    message_value TEXT NOT NULL,
+    error_type VARCHAR(255),
+    error_message TEXT,
+    retry_count INTEGER DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'FAILED',  -- FAILED, REPROCESSING, RESOLVED
+    created_at TIMESTAMP DEFAULT NOW(),
+    resolved_at TIMESTAMP
+);
+
+CREATE INDEX idx_dlq_topic_status ON dead_letter_queue(topic, status);
+CREATE INDEX idx_dlq_error_type ON dead_letter_queue(error_type);
+CREATE INDEX idx_dlq_created_at ON dead_letter_queue(created_at);
+```
+
+### DLQ 서비스 구현
 
 ```kotlin
 @Service
-class KafkaControlService(
-    private val kafkaTemplate: KafkaTemplate<String, String>,
-    private val objectMapper: ObjectMapper
+class DlqService(
+    private val dlqRepository: DlqRepository
 ) {
-    fun broadcastControl(request: ListenerControlRequest) {
-        val topic = "kafka.control"
-        val partitions = kafkaTemplate.partitionsFor(topic)
-
-        partitions.forEach { partition ->
-            val message = objectMapper.writeValueAsString(request)
-            val record = ProducerRecord(topic, partition.partition(), null, message)
-            kafkaTemplate.send(record)
-            log.info("Control message sent to partition ${partition.partition()}")
+    fun save(record: ConsumerRecord<String, String>, errorMessage: String) {
+        val dlq = DlqEntity(
+            topic = record.topic(),
+            partitionId = record.partition(),
+            offsetValue = record.offset(),
+            messageKey = record.key(),
+            messageValue = record.value(),
+            errorType = extractErrorType(errorMessage),
+            errorMessage = errorMessage
+        )
+        dlqRepository.save(dlq)
+    }
+    
+    private fun extractErrorType(errorMessage: String): String {
+        return when {
+            errorMessage.contains("ValidationException") -> "VALIDATION_ERROR"
+            errorMessage.contains("SerializationException") -> "SERIALIZATION_ERROR"
+            errorMessage.contains("TimeoutException") -> "TIMEOUT_ERROR"
+            else -> "UNKNOWN_ERROR"
         }
     }
 }
 ```
 
-### 리스너 동적 제어
-
-`KafkaListenerEndpointRegistry`를 사용하여 리스너를 시작/중지한다.
-
-```kotlin
-@Component
-class KafkaListenerController(
-    private val registry: KafkaListenerEndpointRegistry
-) {
-    @KafkaListener(topics = ["kafka.control"], groupId = "control-group")
-    fun handleControlMessage(record: ConsumerRecord<String, String>) {
-        val request = objectMapper.readValue(record.value(), ListenerControlRequest::class.java)
-
-        val container = registry.getListenerContainer(request.listenerId)
-            ?: throw IllegalArgumentException("Listener not found: ${request.listenerId}")
-
-        when (request.action) {
-            ListenerAction.START -> {
-                container.start()
-                log.info("Listener started: ${request.listenerId}")
-            }
-            ListenerAction.STOP -> {
-                container.stop()
-                log.info("Listener stopped: ${request.listenerId}")
-            }
-        }
-    }
-}
-```
-
-### 사용 시나리오
-
-```bash
-# DLT 리스너 중지 (코드 수정 배포 중)
-curl -X POST http://api-server/v1/kafka/control \
-  -H "Content-Type: application/json" \
-  -d '{"listenerId": "order-dlt-listener", "action": "STOP"}'
-
-# 배포 완료 후 DLT 리스너 재시작
-curl -X POST http://api-server/v1/kafka/control \
-  -H "Content-Type: application/json" \
-  -d '{"listenerId": "order-dlt-listener", "action": "START"}'
-```
 
 ---
 
@@ -297,21 +292,20 @@ fun onApplicationReady() {
 
 ## 정리
 
-Kafka 메시지 처리 실패 관리를 위한 전략을 정리한다.
+Kafka 메시지 처리 실패 관리를 위한 실용적 전략을 정리한다.
 
 | 구성 요소 | 역할 |
 |----------|------|
 | `@RetryableTopic` | 선언적 재시도 설정 |
-| `@DltHandler` | DLT 메시지 처리 |
-| `DltStrategy` | DLT 처리 실패 시 동작 결정 |
-| `KafkaListenerEndpointRegistry` | 리스너 동적 제어 |
+| `@DltHandler` | DLT 메시지 처리 및 DLQ 저장 |
+| `DLT (Topic)` | 임시 보관 및 자동 재처리 |
+| `DLQ (PostgreSQL)` | 영구 저장 및 분석 |
 
 **핵심 원칙**
 
-1. **예외 분류**: Retryable vs Non-Retryable 명확히 구분
-2. **Backoff 전략**: 지수 백오프로 시스템 부하 방지
-3. **DLT 모니터링**: 알림 및 로깅으로 빠른 대응
-4. **동적 제어**: 분산 환경에서 Kafka 토픽을 통한 리스너 제어
+1. **이중 구조**: DLT(재처리) + DLQ(분석) 역할 분리
+2. **예외 분류**: Retryable vs Non-Retryable 명확히 구분
+3. **간단한 저장**: PostgreSQL에 저장하여 SQL로 분석
 
 ---
 
