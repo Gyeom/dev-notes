@@ -98,13 +98,44 @@ fun batchConsumerFactory(): ConsumerFactory<String, String> {
 
 **주요 Consumer Config 옵션**
 
-| 옵션 | 기본값 | 설명 |
-|------|--------|------|
-| `max.poll.records` | 500 | 한 번의 poll()에서 가져올 최대 레코드 수 |
-| `fetch.min.bytes` | 1 byte | 브로커가 반환하기 전에 모아야 할 최소 데이터 양 |
-| `fetch.max.wait.ms` | 500ms | fetch.min.bytes에 도달하기 위해 대기하는 최대 시간 |
-| `max.poll.interval.ms` | 5분 | poll() 호출 간 최대 허용 시간 |
-| `session.timeout.ms` | 45초 | Consumer 생존 확인 주기 |
+| 옵션 | 기본값 | 튜닝값 | 설명 | 이유 |
+|------|--------|--------|------|------|
+| `auto.offset.reset` | latest | earliest | 오프셋 없을 때 시작 위치 | 메시지 유실 방지 |
+| `enable.auto.commit` | true | false | 자동 오프셋 커밋 여부 | At-least-once 보장 |
+| `max.poll.records` | 500 | 500 | poll()당 최대 레코드 수 | 기본값 적정 |
+| `fetch.min.bytes` | 1 byte | 500KB | 브로커가 모아서 보낼 최소 데이터 | 네트워크 효율 향상 |
+| `fetch.max.wait.ms` | 500ms | 3초 | fetch.min.bytes 대기 시간 | 배치 축적 대기 |
+| `max.poll.interval.ms` | 5분 | 5분 | poll() 간 최대 허용 시간 | 기본값 적정 |
+| `session.timeout.ms` | 45초 | 15초 | Consumer 생존 확인 주기 | 빠른 장애 감지 |
+
+**auto.offset.reset 선택 기준**
+
+| 값 | 동작 | 사용 시점 |
+|-----|------|----------|
+| `earliest` | 가장 오래된 메시지부터 | 메시지 유실 방지가 중요할 때 |
+| `latest` | 새로운 메시지부터 | 실시간 처리, 과거 데이터 불필요할 때 |
+
+**수동 커밋 vs 자동 커밋**
+
+위 설정에서 `enable.auto.commit=false`로 수동 커밋을 사용했다.
+
+| 방식 | 장점 | 단점 |
+|------|------|------|
+| 수동 커밋 | At-least-once 보장 | 오버헤드 |
+| 자동 커밋 | 성능 우선, 간단 | 크래시 시 유실 가능 |
+
+**DLQ가 있어도 자동 커밋은 크래시 시 유실 위험이 있다.** DLQ는 "처리 중 예외"를 잡는 것이지, "커밋 후 크래시"는 복구할 수 없다.
+
+```
+자동 커밋 + 크래시 시나리오:
+1. poll()로 메시지 100개 가져옴
+2. 50개 처리 중...
+3. 자동 커밋 발동 → 오프셋 100까지 커밋
+4. 앱 크래시!
+5. 재시작 → 51~100번 메시지 유실 (DLQ로 안 감)
+```
+
+Telemetry 서비스는 **모든 데이터를 적재해야 하므로 유실이 허용되지 않는다**. 그래서 수동 커밋으로 At-least-once를 보장하고, 처리 실패 시 DLQ로 복구할 수 있게 했다.
 
 ### fetch와 poll의 동작 위치
 
