@@ -98,12 +98,50 @@ fun batchConsumerFactory(): ConsumerFactory<String, String> {
 
 **주요 Consumer Config 옵션**
 
-| 옵션 | 설명 |
-|------|------|
-| `max.poll.records` | 한 번의 poll()에서 가져올 최대 레코드 수 |
-| `fetch.min.bytes` | 브로커가 반환하기 전에 모아야 할 최소 데이터 양 |
-| `fetch.max.wait.ms` | fetch.min.bytes에 도달하기 위해 대기하는 최대 시간 |
-| `max.poll.interval.ms` | poll() 호출 간 최대 허용 시간 |
+| 옵션 | 기본값 | 설명 |
+|------|--------|------|
+| `max.poll.records` | 500 | 한 번의 poll()에서 가져올 최대 레코드 수 |
+| `fetch.min.bytes` | 1 byte | 브로커가 반환하기 전에 모아야 할 최소 데이터 양 |
+| `fetch.max.wait.ms` | 500ms | fetch.min.bytes에 도달하기 위해 대기하는 최대 시간 |
+| `max.poll.interval.ms` | 5분 | poll() 호출 간 최대 허용 시간 |
+| `session.timeout.ms` | 45초 | Consumer 생존 확인 주기 |
+
+### fetch와 poll의 동작 위치
+
+설정을 이해하려면 **어디에서 동작하는지** 알아야 한다.
+
+```mermaid
+flowchart TB
+    subgraph Broker["Broker"]
+        Topic["Topic<br/>(Partition 0, 1, 2...)"]
+    end
+
+    subgraph Consumer["Consumer"]
+        Buffer["내부 버퍼"]
+        App["Application<br/>(Batch Listener)"]
+    end
+
+    Topic -->|"fetch response<br/>fetch.min.bytes 만큼 모아서 전송"| Buffer
+    Buffer -->|"poll()<br/>max.poll.records 만큼 반환"| App
+
+    style Topic fill:#e3f2fd
+    style Buffer fill:#fff3e0
+    style App fill:#e8f5e9
+```
+
+| 설정 | 동작 위치 | 역할 |
+|------|----------|------|
+| `fetch.min.bytes` | Broker → Consumer | 네트워크로 **보내기 전** 최소 데이터량 |
+| `max.poll.records` | Consumer 내부 | 버퍼에서 **꺼낼 때** 최대 개수 |
+
+**fetch.min.bytes를 높이면?**
+- 브로커가 충분한 데이터를 모아서 한 번에 전송
+- 네트워크 왕복 감소 → 처리량 증가
+- 단, 데이터가 적을 때 지연 발생 (fetch.max.wait.ms까지 대기)
+
+**대용량 처리에서 fetch.min.bytes 튜닝이 필수인가?**
+
+필수는 아니다. 분당 50만 건처럼 데이터가 빠르게 들어오는 환경에서는 기본값(1byte)으로도 버퍼가 금방 채워진다. fetch.min.bytes는 **네트워크 효율 최적화** 수준이다.
 
 > **주의**: `fetch.max.wait.ms`는 반드시 `max.poll.interval.ms`보다 작아야 한다. 그렇지 않으면 브로커가 Consumer를 비정상으로 판단하여 Rebalancing이 발생한다.
 
