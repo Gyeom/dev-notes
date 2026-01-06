@@ -1,7 +1,7 @@
 ---
 title: "LLM 개념 정리 (5) - 검색 전략"
 date: 2025-12-05
-draft: false
+draft: true
 tags: ["RAG", "Search", "BM25", "Hybrid-Search", "개념정리"]
 categories: ["AI/ML"]
 series: ["LLM/RAG/Agent 개념 정리"]

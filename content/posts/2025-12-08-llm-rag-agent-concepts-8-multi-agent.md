@@ -1,7 +1,7 @@
 ---
 title: "LLM 개념 정리 (8) - Multi-Agent 패턴"
 date: 2025-12-08
-draft: false
+draft: true
 tags: ["AI-Agent", "Multi-Agent", "LLM", "개념정리"]
 categories: ["AI/ML"]
 series: ["LLM/RAG/Agent 개념 정리"]

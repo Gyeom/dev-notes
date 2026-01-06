@@ -1,7 +1,7 @@
 ---
 title: "LLM 개념 정리 (9) - Tool Calling"
 date: 2025-12-09
-draft: false
+draft: true
 tags: ["AI-Agent", "Tool-Calling", "Function-Calling", "LLM", "개념정리"]
 categories: ["AI/ML"]
 series: ["LLM/RAG/Agent 개념 정리"]

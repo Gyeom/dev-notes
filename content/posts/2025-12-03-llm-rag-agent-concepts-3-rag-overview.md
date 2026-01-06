@@ -1,7 +1,7 @@
 ---
 title: "LLM 개념 정리 (3) - RAG 개요"
 date: 2025-12-03
-draft: false
+draft: true
 tags: ["RAG", "LLM", "Chunking", "Knowledge-Base", "개념정리"]
 categories: ["AI/ML"]
 series: ["LLM/RAG/Agent 개념 정리"]

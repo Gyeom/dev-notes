@@ -1,7 +1,7 @@
 ---
 title: "LLM 개념 정리 (10) - 평가 & 안정성"
 date: 2025-12-10
-draft: false
+draft: true
 tags: ["RAG", "AI-Agent", "Evaluation", "Guardrails", "개념정리"]
 categories: ["AI/ML"]
 series: ["LLM/RAG/Agent 개념 정리"]

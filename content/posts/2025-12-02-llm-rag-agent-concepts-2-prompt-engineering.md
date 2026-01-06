@@ -1,7 +1,7 @@
 ---
 title: "LLM 개념 정리 (2) - 프롬프트 엔지니어링"
 date: 2025-12-02
-draft: false
+draft: true
 tags: ["LLM", "Prompt-Engineering", "CoT", "Few-shot", "개념정리"]
 categories: ["AI/ML"]
 series: ["LLM/RAG/Agent 개념 정리"]

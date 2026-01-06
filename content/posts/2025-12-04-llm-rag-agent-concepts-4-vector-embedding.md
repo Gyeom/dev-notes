@@ -1,7 +1,7 @@
 ---
 title: "LLM 개념 정리 (4) - Vector & Embedding"
 date: 2025-12-04
-draft: false
+draft: true
 tags: ["Vector", "Embedding", "Vector-DB", "ANN", "개념정리"]
 categories: ["AI/ML"]
 series: ["LLM/RAG/Agent 개념 정리"]

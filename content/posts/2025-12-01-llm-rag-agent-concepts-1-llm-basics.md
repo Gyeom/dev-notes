@@ -1,7 +1,7 @@
 ---
 title: "LLM 개념 정리 (1) - LLM 기초"
 date: 2025-12-01
-draft: false
+draft: true
 tags: ["LLM", "AI", "Foundation-Model", "개념정리"]
 categories: ["AI/ML"]
 series: ["LLM/RAG/Agent 개념 정리"]
