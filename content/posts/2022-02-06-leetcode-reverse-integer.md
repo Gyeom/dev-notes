@@ -1,6 +1,7 @@
 ---
 title: "LeetCode - Reverse Integer"
 date: 2022-02-06
+draft: true
 tags: ["알고리즘", "Java", "수학", "오버플로우", "LeetCode"]
 categories: ["문제풀이"]
 summary: "정수 뒤집기. 오버플로우 발생 시 0 반환. % 10으로 추출, / 10으로 제거."

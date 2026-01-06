@@ -1,6 +1,7 @@
 ---
 title: "HackerRank - New Year Chaos"
 date: 2022-01-19
+draft: true
 tags: ["알고리즘", "Java", "배열", "HackerRank"]
 categories: ["문제풀이"]
 summary: "놀이공원 줄서기에서 뇌물 횟수 계산하기. 원래 위치와 현재 위치를 비교한다."

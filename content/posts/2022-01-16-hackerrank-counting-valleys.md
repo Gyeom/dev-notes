@@ -1,6 +1,7 @@
 ---
 title: "HackerRank - Counting Valleys"
 date: 2022-01-16
+draft: true
 tags: ["알고리즘", "Java", "HackerRank"]
 categories: ["문제풀이"]
 summary: "등산 경로에서 골짜기 개수 세기. 해수면 아래로 내려갔다가 복귀하는 순간을 카운트한다."

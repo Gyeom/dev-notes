@@ -1,6 +1,7 @@
 ---
 title: "HackerRank - Left Rotation"
 date: 2022-01-18
+draft: true
 tags: ["알고리즘", "Java", "배열", "HackerRank"]
 categories: ["문제풀이"]
 summary: "배열을 왼쪽으로 d칸 회전하기. 앞부분을 뒤로 보내면 된다."

@@ -1,6 +1,7 @@
 ---
 title: "LeetCode - Reverse Linked List"
 date: 2022-01-24
+draft: true
 tags: ["알고리즘", "Java", "LinkedList", "LeetCode", "HackerRank"]
 categories: ["문제풀이"]
 summary: "연결 리스트 뒤집기. 세 개의 포인터로 방향을 역전시킨다."

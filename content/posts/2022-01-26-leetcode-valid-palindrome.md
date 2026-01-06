@@ -1,6 +1,7 @@
 ---
 title: "LeetCode - Valid Palindrome"
 date: 2022-01-26
+draft: true
 tags: ["알고리즘", "Java", "문자열", "투포인터", "LeetCode"]
 categories: ["문제풀이"]
 summary: "문자열이 팰린드롬인지 확인. 전처리 후 뒤집기 비교가 가장 간단."

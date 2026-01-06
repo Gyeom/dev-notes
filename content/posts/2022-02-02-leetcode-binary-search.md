@@ -1,6 +1,7 @@
 ---
 title: "LeetCode - Binary Search"
 date: 2022-02-02
+draft: true
 tags: ["알고리즘", "Java", "배열", "이진탐색", "LeetCode"]
 categories: ["문제풀이"]
 summary: "정렬된 배열에서 타겟 찾기. O(log n)의 기본 이진 탐색."

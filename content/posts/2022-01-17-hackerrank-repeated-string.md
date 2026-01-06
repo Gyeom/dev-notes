@@ -1,6 +1,7 @@
 ---
 title: "HackerRank - Repeated String"
 date: 2022-01-17
+draft: true
 tags: ["알고리즘", "Java", "HackerRank"]
 categories: ["문제풀이"]
 summary: "무한 반복 문자열에서 처음 n개 문자 중 'a'의 개수 구하기. 나눗셈과 나머지로 최적화한다."

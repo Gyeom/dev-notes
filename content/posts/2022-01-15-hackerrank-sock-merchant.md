@@ -1,6 +1,7 @@
 ---
 title: "HackerRank - Sock Merchant"
 date: 2022-01-15
+draft: true
 tags: ["알고리즘", "Java", "HashMap", "HackerRank"]
 categories: ["문제풀이"]
 summary: "양말 짝 맞추기 문제. HashMap으로 개수를 세면서 짝이 완성될 때마다 카운트한다."

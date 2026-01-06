@@ -1,6 +1,7 @@
 ---
 title: "HackerRank - Palindrome Index"
 date: 2022-01-27
+draft: true
 tags: ["알고리즘", "Java", "문자열", "투포인터", "HackerRank"]
 categories: ["문제풀이"]
 summary: "한 글자만 제거해서 팰린드롬 만들기. 양 끝에서 비교하다 다르면 둘 중 하나 제거 시도."

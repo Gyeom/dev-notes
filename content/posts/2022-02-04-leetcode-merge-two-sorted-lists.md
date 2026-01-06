@@ -1,6 +1,7 @@
 ---
 title: "LeetCode - Merge Two Sorted Lists"
 date: 2022-02-04
+draft: true
 tags: ["알고리즘", "Java", "연결리스트", "LeetCode", "HackerRank"]
 categories: ["문제풀이"]
 summary: "두 정렬된 연결 리스트 병합. 더미 헤드로 시작, 작은 값 연결, 남은 리스트 붙이기."
