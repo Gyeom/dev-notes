@@ -4,11 +4,11 @@ allowed-tools:
   - Bash
 ---
 
-Private repo (temp/) 변경사항을 GitHub에 푸시한다.
+Private repo (~/dev-notes-private) 변경사항을 GitHub에 푸시한다.
 
 ## 순서
 
-1. `cd temp && git status`로 변경사항 확인
+1. `cd ~/dev-notes-private && git status`로 변경사항 확인
 2. 변경사항이 있으면:
    - `git add .`
    - `git commit -m "적절한 커밋 메시지"`
@@ -24,4 +24,4 @@ Private repo (temp/) 변경사항을 GitHub에 푸시한다.
 ## 참고
 
 - Private repo는 GitHub Pages 배포 없음 (로컬 전용)
-- Preview: `cd temp && hugo server -D -p 1314`
+- Preview: `cd ~/dev-notes-private && hugo server -D -p 1314`

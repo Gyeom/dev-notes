@@ -15,12 +15,12 @@ hugo server -D
 
 **비공개 블로그 (dev-notes-private):**
 ```bash
-cd temp && hugo server -D -p 1314
+cd ~/dev-notes-private && hugo server -D -p 1314
 ```
 
 **둘 다 동시에:**
 ```bash
-hugo server -D & (cd temp && hugo server -D -p 1314)
+hugo server -D & (cd ~/dev-notes-private && hugo server -D -p 1314)
 ```
 
 ## 안내
