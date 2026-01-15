@@ -1,6 +1,6 @@
-# /pdf: 페이지를 PDF로 변환
+# /pdf: 이력서를 PDF로 변환
 
-About 페이지(이력서)를 PDF로 변환한다. 네비게이션 숨김, 폰트 크기 조정, 페이지 분리가 자동 적용된다.
+이력서 페이지를 PDF로 변환한다. Hugo Book 테마에 최적화되어 있다.
 
 ## 사용법
 
@@ -8,8 +8,8 @@ About 페이지(이력서)를 PDF로 변환한다. 네비게이션 숨김, 폰�
 /pdf [URL]
 ```
 
-- URL 생략 시 기본값: `http://localhost:1313/dev-notes/about/`
-- 로컬 Hugo 서버가 실행 중이어야 한다 (`hugo server -D`)
+- URL 생략 시 기본값: `http://localhost:1314/docs/resume/`
+- 로컬 Hugo 서버가 실행 중이어야 한다 (`cd ~/dev-notes-private && hugo server -D -p 1314`)
 
 ## 인자
 
@@ -17,7 +17,7 @@ $ARGUMENTS
 
 ## 실행 단계
 
-1. **Hugo 서버 확인**: 로컬 서버가 실행 중인지 확인한다. 실행 중이 아니면 시작을 안내한다.
+1. **Hugo 서버 확인**: localhost:1314가 실행 중인지 확인. 아니면 시작 안내.
 
 2. **Playwright로 페이지 열기**:
    ```
@@ -26,76 +26,71 @@ $ARGUMENTS
 
 3. **스타일 적용 + PDF 생성** (browser_run_code):
    ```javascript
-   // 스타일 적용 (고정 폰트 크기로 빠르게 처리)
-   await page.evaluate(() => {
-     // 네비게이션 숨김
-     const header = document.querySelector('header');
-     if (header) header.style.display = 'none';
-     const pageTitle = document.querySelector('h1.post-title');
-     if (pageTitle) pageTitle.style.display = 'none';
+   async (page) => {
+     await page.evaluate(() => {
+       // Hugo Book 사이드바/메뉴 숨김
+       document.querySelectorAll('aside, nav.book-menu, .book-toc').forEach(el => {
+         el.style.display = 'none';
+       });
 
-     // 고정 폰트 크기 76%
-     document.body.style.fontSize = '76%';
-     document.body.style.lineHeight = '1.3';
-
-     // 마진 축소
-     document.querySelectorAll('h2').forEach(h2 => {
-       h2.style.marginTop = '0.4em';
-       h2.style.marginBottom = '0.2em';
-     });
-     document.querySelectorAll('hr').forEach(hr => {
-       hr.style.margin = '0.4em 0';
-     });
-
-     // 페이지 분리
-     document.querySelectorAll('h2').forEach(h2 => {
-       if (h2.textContent.includes('Experience') ||
-           h2.textContent.includes('Activity')) {
-         h2.style.pageBreakBefore = 'always';
+       // 메인 콘텐츠 전체 너비
+       const main = document.querySelector('main');
+       if (main) {
+         main.style.maxWidth = '100%';
+         main.style.padding = '0';
        }
-     });
 
-     document.querySelectorAll('.company-header').forEach(header => {
-       const h3 = header.querySelector('h3');
-       if (h3 && h3.textContent.includes('한화솔루션')) {
-         header.style.pageBreakBefore = 'always';
+       const article = document.querySelector('article');
+       if (article) {
+         article.style.maxWidth = '800px';
+         article.style.margin = '0 auto';
        }
+
+       // 앵커 링크 숨김
+       document.querySelectorAll('a.anchor').forEach(a => a.style.display = 'none');
+
+       // 하단 네비게이션 숨김
+       document.querySelectorAll('a[href*="shinhan"]').forEach(a => {
+         if (a.closest('article')) a.style.display = 'none';
+       });
+
+       // Experience 섹션 앞에서 페이지 분리
+       document.querySelectorAll('h2').forEach(h2 => {
+         if (h2.textContent.includes('Experience')) {
+           h2.style.pageBreakBefore = 'always';
+         }
+       });
      });
 
-     // 항목 끊김 방지
-     document.querySelectorAll('.project, .activity-item, .achievement, tr').forEach(el => {
-       el.style.pageBreakInside = 'avoid';
+     await page.pdf({
+       path: '/Users/a13801/dev-notes-private/resume.pdf',
+       format: 'A4',
+       margin: { top: '1.5cm', right: '1.5cm', bottom: '1.5cm', left: '1.5cm' },
+       printBackground: true
      });
-   });
 
-   await page.pdf({
-     path: '/Users/a13801/dev-notes/resume.pdf',
-     format: 'A4',
-     margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' },
-     printBackground: true
-   });
+     return 'PDF saved to ~/dev-notes-private/resume.pdf';
+   }
    ```
 
-4. **결과 안내**: PDF 파일 경로와 페이지 수 알려주기
+4. **결과 안내**: PDF 파일 경로 알려주기
 
 ## 페이지 분리 전략
 
 | 페이지 | 내용 |
 |--------|------|
 | 1 | Header + Core Competencies + Tech Stack |
-| 2 | Experience (42dot) |
-| 3 | Experience (한화솔루션, 롯데정보통신) |
-| 4 | Activity + Education |
+| 2~ | Experience (42dot, 한화솔루션, 롯데정보통신) |
+| 마지막 | Activity + Education |
 
 ## 커스터마이징
 
 - **파일명 변경**: `path` 옵션 수정
-- **폰트 크기**: `fontSize = '76%'` 변경 (Tech Stack이 1페이지에 들어가도록 조정됨)
 - **여백 조정**: `margin` 옵션 수정
 - **페이지 분리 위치**: `page.evaluate` 내 조건문 수정
 
 ## 참고
 
 - Playwright MCP의 `browser_run_code`로 `page` 객체에 접근
-- `@media print` 스타일이 about.md에 정의되어 있음
-- 프로젝트/성과 항목은 `page-break-inside: avoid`로 중간에 잘리지 않음
+- 이력서 스타일은 `content/docs/resume/_index.md`에 정의
+- `@media print` 스타일이 이력서 파일에 포함되어 있음
