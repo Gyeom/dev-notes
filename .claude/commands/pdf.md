@@ -8,7 +8,7 @@
 /pdf [URL]
 ```
 
-- URL 생략 시 기본값: `http://localhost:1314/docs/resume/`
+- URL 생략 시 기본값: `http://localhost:1314/docs/resume/default/`
 - 로컬 Hugo 서버가 실행 중이어야 한다 (`cd ~/dev-notes-private && hugo server -D -p 1314`)
 
 ## 인자
@@ -92,5 +92,5 @@ $ARGUMENTS
 ## 참고
 
 - Playwright MCP의 `browser_run_code`로 `page` 객체에 접근
-- 이력서 스타일은 `content/docs/resume/_index.md`에 정의
+- 이력서 스타일은 `content/docs/resume/default.md`에 정의
 - `@media print` 스타일이 이력서 파일에 포함되어 있음
