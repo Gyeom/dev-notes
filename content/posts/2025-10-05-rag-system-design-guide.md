@@ -28,6 +28,8 @@ flowchart LR
         L2 --> A2["근거 있는 답변"]
     end
 
+    Without ~~~ With
+
     style R fill:#E8F5E9
     style K fill:#E3F2FD
 ```
