@@ -1,6 +1,7 @@
 ---
 title: "시계열 데이터 다운샘플링 전략"
 date: 2023-07-20
+draft: true
 tags: ["시계열", "TimescaleDB", "Kafka", "Flink", "Spark", "Airflow", "성능최적화"]
 categories: ["Backend"]
 summary: "1분 데이터를 15분 단위로 집계하는 방법. Spring 내부 처리부터 Flink/Spark 분리 아키텍처까지."
