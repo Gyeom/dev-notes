@@ -1,7 +1,7 @@
 ---
 title: "Figma + Vision AI로 Design-Aware Code Review 구현하기"
 date: 2025-12-26
-draft: false
+draft: true
 tags: ["Figma", "Vision-AI", "Code-Review", "Claude", "자동화", "SSE", "RAG"]
 categories: ["AI", "개발도구"]
 summary: "Figma 기획서를 Vision AI로 분석하여 API 스펙을 추출하고, MR diff와 비교해 기획서 준수 여부를 자동으로 검증하는 시스템을 구현한다."

@@ -1,7 +1,7 @@
 ---
 title: "Context Enrichment Pipeline: Chain of Responsibility로 프롬프트 증강하기"
 date: 2025-12-26
-draft: false
+draft: true
 tags: ["AI Agent", "Design Pattern", "Kotlin", "Claude Flow", "RAG"]
 categories: ["Architecture"]
 summary: "사용자 프롬프트에 프로젝트 정보, 도메인 지식을 자동 주입하는 파이프라인을 Chain of Responsibility 패턴으로 구현한다"

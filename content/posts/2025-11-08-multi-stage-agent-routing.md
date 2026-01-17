@@ -1,10 +1,10 @@
 ---
-title: "다단계 에이전트 라우팅: 피드백 학습부터 폴백까지 5단계 파이프라인"
+title: "다단계 에이전트 라우팅: 피드백 학습부터 폴백까지 4단계 파이프라인"
 date: 2025-11-08
-draft: false
+draft: true
 tags: ["AI", "Agent", "Routing", "Multi-Agent", "Semantic Search"]
 categories: ["Architecture"]
-summary: "사용자 의도를 정확히 파악하여 적합한 에이전트로 라우팅하는 5단계 파이프라인 설계. 피드백 학습, 키워드 매칭, 패턴 매칭, 시맨틱 검색, 폴백 전략을 통해 높은 정확도와 성능을 동시에 달성한다."
+summary: "사용자 의도를 정확히 파악하여 적합한 에이전트로 라우팅하는 4단계 파이프라인 설계. 피드백 학습, 룰 기반 매칭, 시맨틱 검색, 폴백 전략을 통해 높은 정확도와 성능을 동시에 달성한다."
 ---
 
 > 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)와 [설계기](/dev-notes/posts/2025-12-28-claude-flow-ai-agent-platform/)에서 확인할 수 있다.
@@ -25,23 +25,20 @@ summary: "사용자 의도를 정확히 파악하여 적합한 에이전트로 �
 graph TD
     A[사용자 메시지] --> B{1. 피드백 학습}
     B -->|confidence 0.9| Z[에이전트 실행]
-    B -->|실패| C{2. 키워드 매칭}
-    C -->|confidence 0.95| Z
-    C -->|실패| D{3. 패턴 매칭}
-    D -->|confidence 0.85| Z
-    D -->|실패| E{4. 시맨틱 검색}
+    B -->|실패| C{2. 룰 기반 매칭}
+    C -->|confidence 0.85~0.95| Z
+    C -->|실패| E{3. 시맨틱 검색}
     E -->|유사도 기반| Z
-    E -->|실패| F[5. 기본 에이전트]
+    E -->|실패| F[4. 기본 에이전트]
     F -->|confidence 0.5| Z
 
     style B fill:#E8F5E9
     style C fill:#E3F2FD
-    style D fill:#FFF3E0
     style E fill:#FCE4EC
     style F fill:#ECEFF1
 ```
 
-## 5단계 라우팅 전략
+## 4단계 라우팅 전략
 
 ### 1단계: 피드백 학습 기반 추천 (Confidence: 0.9)
 
@@ -52,33 +49,29 @@ graph TD
 - 0.9로 제한: 피드백은 과거 데이터이므로 현재 의도와 다를 수 있다
 - 0.8 threshold: 충분히 유사한 쿼리만 사용하여 오매칭을 방지한다
 
-### 2단계: 키워드 매칭 (Confidence: 0.95)
+### 2단계: 룰 기반 매칭 (Confidence: 0.85~0.95)
 
-가장 빠르고 직관적인 방법이다. 메시지에 명확한 키워드("리뷰", "버그", "수정")가 포함되면 즉시 매칭된다.
-
-**설계 근거:**
-- 명확한 키워드는 사용자 의도를 정확히 반영한다
-- 0.95: 가장 높은 신뢰도이지만 동음이의어 가능성을 고려해 100%는 아니다
-- O(n*m) 복잡도이지만 키워드 개수가 적어 1ms 이하로 처리된다
-
-### 3단계: 정규식 패턴 매칭 (Confidence: 0.85)
-
-"MR #123", "NullPointerException" 같은 복잡한 패턴을 인식한다.
+키워드 매칭과 정규식 패턴 매칭을 통합한 단계다. 두 방식 모두 "명시적 규칙"으로 사용자 의도를 파악한다는 공통점이 있다.
 
 ```mermaid
 flowchart LR
-    subgraph Patterns["패턴 예시"]
-        P1["MR #123"] --> A1["code-reviewer"]
-        P2["버그|에러|exception"] --> A2["bug-fixer"]
-        P3["설명|뭐야|어떻게"] --> A3["general"]
+    subgraph Keywords["키워드 매칭 (0.95)"]
+        K1["리뷰, 검토"] --> KA["code-reviewer"]
+        K2["버그, 에러"] --> KB["bug-fixer"]
     end
+    subgraph Patterns["패턴 매칭 (0.85)"]
+        P1["MR #123"] --> PA["code-reviewer"]
+        P2["NullPointerException"] --> PB["bug-fixer"]
+    end
+    Keywords ~~~ Patterns
 ```
 
 **설계 근거:**
-- 키워드보다 유연하지만 정규식 복잡도에 따라 오탐 가능성이 있어 0.85로 설정
-- 한글/영어 동시 지원으로 다국어 환경에서 유용하다
+- **키워드 매칭**: 명확한 키워드("리뷰", "버그")가 포함되면 즉시 매칭. 0.95로 높은 신뢰도
+- **패턴 매칭**: 정규식으로 복잡한 패턴 인식. 오탐 가능성을 고려해 0.85로 설정
+- 둘 다 O(n) 복잡도로 1ms 이하 처리. 시맨틱 검색 전에 빠르게 처리할 수 있는 경우를 걸러낸다
 
-### 4단계: 시맨틱 검색 (Confidence: 유사도 기반)
+### 3단계: 시맨틱 검색 (Confidence: 유사도 기반)
 
 > Semantic Router swaps slow LLM calls for superfast route decisions. Rather than waiting for slow LLM generations to make tool-use decisions, it uses the magic of semantic vector space. — [Aurelio Labs](https://github.com/aurelio-labs/semantic-router)
 
@@ -95,7 +88,7 @@ adjustedScore = rawScore × (1.0 + priority/1000)
 
 → 더 전문화된 에이전트가 선택된다.
 
-### 5단계: 기본 에이전트 폴백 (Confidence: 0.5)
+### 4단계: 기본 에이전트 폴백 (Confidence: 0.5)
 
 모든 매칭이 실패하면 기본 에이전트(general)로 폴백한다.
 
@@ -164,7 +157,7 @@ flowchart LR
 
 ### 단락 평가 (Short-circuit Evaluation)
 
-각 단계는 성공 시 즉시 반환한다. 대부분의 경우 2단계(키워드 매칭)에서 종료되므로 **평균 응답 시간은 1-2ms**다.
+각 단계는 성공 시 즉시 반환한다. 대부분의 경우 2단계(룰 기반 매칭)에서 종료되므로 **평균 응답 시간은 1-2ms**다.
 
 ### 캐싱
 
@@ -202,7 +195,7 @@ flowchart LR
 
 | 원칙 | 구현 |
 |------|------|
-| 빠른 경로 우선 | 키워드 매칭 1-2ms 내 처리 |
+| 빠른 경로 우선 | 룰 기반 매칭 1-2ms 내 처리 |
 | 점진적 폴백 | 복잡한 쿼리는 시맨틱 검색으로 대응 |
 | 명확한 신뢰도 | Confidence score로 결과 품질 정량화 |
 | 피드백 학습 | 사용자와 함께 성장하는 시스템 |
