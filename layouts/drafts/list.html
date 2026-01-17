@@ -1,0 +1,46 @@
+{{- define "main" }}
+
+<header class="page-header">
+  <h1>{{ .Title }}</h1>
+  {{- if .Description }}
+  <div class="post-description">
+    {{ .Description }}
+  </div>
+  {{- end }}
+</header>
+
+{{- $drafts := where .Site.RegularPages "Draft" true }}
+
+{{- if $drafts }}
+<p style="color: var(--secondary); margin-bottom: 1.5rem;">
+  {{ len $drafts }}개의 초안이 있습니다.
+</p>
+
+{{- range $drafts }}
+<article class="post-entry">
+  <header class="entry-header">
+    <h2>
+      <a href="{{ .Permalink }}">{{ .Title }}</a>
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>{{ .Summary | plainify | truncate 150 }}</p>
+  </div>
+  <footer class="entry-footer">
+    <span>{{ .Date.Format "2006-01-02" }}</span>
+    {{- if .Params.tags }}
+    <span> · </span>
+    {{- range .Params.tags }}
+    <span class="tag">{{ . }}</span>
+    {{- end }}
+    {{- end }}
+  </footer>
+  <a class="entry-link" href="{{ .Permalink }}"></a>
+</article>
+{{- end }}
+
+{{- else }}
+<p style="color: var(--secondary);">초안이 없습니다.</p>
+{{- end }}
+
+{{- end }}{{/* end main */}}

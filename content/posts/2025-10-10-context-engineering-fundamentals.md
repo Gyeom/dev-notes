@@ -1,7 +1,7 @@
 ---
 title: "Context Engineering 입문: Prompt Engineering을 넘어서"
 date: 2025-10-10
-draft: false
+draft: true
 tags: ["Context Engineering", "Prompt Engineering", "LLM", "AI Agent", "Claude"]
 categories: ["AI Fundamentals"]
 summary: "2025년 AI 개발의 핵심 개념인 Context Engineering을 정리한다. 단순한 프롬프트 작성을 넘어, AI에게 적절한 정보를 적절한 형식으로 제공하는 기술이다."

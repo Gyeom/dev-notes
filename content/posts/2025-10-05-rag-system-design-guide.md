@@ -7,8 +7,6 @@ categories: ["AI Fundamentals"]
 summary: "RAG(Retrieval-Augmented Generation)의 핵심 원리, 아키텍처 패턴, 그리고 프로덕션 레벨 설계 전략을 정리한다."
 ---
 
-> 이 글은 RAG의 기초 개념을 다룬다. 실제 구현 사례는 [Claude Flow 시리즈](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
-
 ## RAG란 무엇인가
 
 RAG(Retrieval-Augmented Generation)는 **외부 지식을 검색해서 LLM의 응답에 활용**하는 기술이다. LLM의 학습 데이터에 없는 정보(사내 문서, 최신 뉴스, 개인 데이터)를 답변에 포함할 수 있게 한다.
@@ -375,4 +373,3 @@ RAG는 LLM의 가장 큰 약점인 **환각과 지식 한계**를 해결하는 �
 ---
 
 > **이전 글**: [AI Agent 아키텍처의 이해](/dev-notes/posts/2025-10-01-ai-agent-architecture-fundamentals/)
-> **다음 글**: [Context Engineering의 이해](/dev-notes/posts/2025-10-10-context-engineering-fundamentals/)

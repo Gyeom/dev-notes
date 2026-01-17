@@ -23,13 +23,13 @@ flowchart LR
     end
 
     subgraph Agent["🤖 AI Agent"]
-        A1["목표"] --> A2["계획 수립"]
-        A2 --> A3["도구 선택"]
+        A1["목표"] --> A2["계획"]
+        A2 --> A3["도구"]
         A3 --> A4["실행"]
-        A4 --> A5{목표 달성?}
-        A5 -->|No| A2
-        A5 -->|Yes| A6["완료"]
+        A4 -->|반복| A2
     end
+
+    Chatbot ~~~ Agent
 
     style A2 fill:#E3F2FD
     style A3 fill:#E8F5E9

@@ -1,15 +1,13 @@
 ---
-title: "Claude Code Session Resume로 토큰 30-40% 절감하기"
-date: 2025-11-05
+title: "Claude Code Session Resume로 토큰 절감하기"
+date: 2025-10-03
 draft: false
 tags: ["Claude Code", "AI", "Token Optimization", "Session Management", "Prompt Caching"]
 categories: ["AI Development"]
-summary: "Claude Code의 --resume 옵션과 세션 관리로 토큰 비용을 대폭 줄이는 방법. 프롬프트 캐싱의 원리와 실제 구현 패턴을 알아본다."
+summary: "Claude Code의 --resume 옵션과 세션 관리로 토큰 비용을 줄이는 방법. 프롬프트 캐싱의 원리와 실제 구현 패턴을 알아본다."
 ---
 
-> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)와 [설계기](/dev-notes/posts/2025-12-28-claude-flow-ai-agent-platform/)에서 확인할 수 있다.
->
-> **관련 개념**: [Context Engineering의 이해](/dev-notes/posts/2025-10-10-context-engineering-fundamentals/) - 프롬프트 캐싱이 Context Engineering에서 어떤 역할을 하는지
+> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
 
 ## 왜 세션 관리가 중요한가
 
@@ -128,7 +126,6 @@ CLAUDE.md 최적화와 세션 재개를 결합하면:
 
 - 세션당 약 1,300 토큰 절감
 - 시작 시 토큰: 약 800 토큰으로 감소
-- 전체적으로 **30-40% 토큰 절감**
 
 ## 베스트 프랙티스
 
@@ -157,9 +154,9 @@ Slack 기반 Claude Code 봇
 
 ```mermaid
 flowchart LR
-    A[작업 진행] --> B[계획/진행 상황을<br/>.md로 작성]
-    B --> C[/clear로<br/>세션 초기화]
-    C --> D[새 세션에서<br/>.md 읽고 계속]
+    A["작업 진행"] --> B["계획/진행 상황을<br/>.md로 작성"]
+    B --> C["/clear로<br/>세션 초기화"]
+    C --> D["새 세션에서<br/>.md 읽고 계속"]
 ```
 
 1. Claude에게 계획과 진행 상황을 .md 파일로 작성하게 한다
@@ -191,7 +188,7 @@ claude --resume old-session-123
 | CLAUDE.md 최적화 | 시작 토큰 최소화 |
 | TTL 관리 (30분) | 캐시 갱신 기회 확보 |
 
-이 조합으로 **30-40% 이상 토큰을 절감**할 수 있다.
+이 조합으로 토큰 비용을 효과적으로 절감할 수 있다.
 
 ## 참고 자료
 
@@ -203,4 +200,4 @@ claude --resume old-session-123
 
 ---
 
-> **시리즈**: [Claude Flow 개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/) | **다음 글**: [다단계 에이전트 라우팅](/dev-notes/posts/2025-11-08-multi-stage-agent-routing/)
+> **시리즈**: [Claude Flow 개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)

@@ -1,13 +1,13 @@
 ---
-title: "AI 에이전트 성능 최적화: 응답 시간 50% 단축 전략"
+title: "AI 에이전트 성능 최적화: 응답 시간 단축 전략"
 date: 2025-12-26
 draft: false
 tags: ["AI Agent", "Performance", "Kotlin", "Claude Flow", "Optimization"]
 categories: ["Architecture"]
-summary: "LLM 호출 최적화, Pre-analysis, 캐싱 전략으로 AI 에이전트의 응답 시간을 절반으로 줄인다"
+summary: "LLM 호출 최적화, Pre-analysis, 캐싱 전략으로 AI 에이전트의 응답 시간을 단축한다"
 ---
 
-> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)와 [설계기](/dev-notes/posts/2025-12-28-claude-flow-ai-agent-platform/)에서 확인할 수 있다.
+> 이 글은 [Claude Flow](https://github.com/Gyeom/claude-flow) 프로젝트를 개발하면서 정리한 내용이다. 전체 아키텍처는 [개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)에서 확인할 수 있다.
 >
 > **관련 개념**: [AI Agent 아키텍처의 이해](/dev-notes/posts/2025-10-01-ai-agent-architecture-fundamentals/) - AI 에이전트의 구성 요소와 설계 원칙
 
@@ -273,4 +273,4 @@ AI 에이전트 성능 최적화의 핵심은 **LLM을 덜 호출하고, 호출�
 
 ---
 
-> **시리즈**: [Claude Flow 개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/) | **이전 글**: [Context Enrichment Pipeline](/dev-notes/posts/2025-12-26-context-enrichment-pipeline/)
+> **시리즈**: [Claude Flow 개발기](/dev-notes/posts/2025-11-22-claude-flow-development-story/)
