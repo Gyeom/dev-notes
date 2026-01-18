@@ -648,12 +648,8 @@ class ActivateVehicleUseCaseTest : BehaviorSpec({
 Mike Cohn의 "Succeeding with Agile"에서 제안한 모델이다.
 
 ```mermaid
-flowchart TB
-    E2E["🔺 E2E<br/><small>느림, 적게</small>"]
-    Integration["🔸 통합 테스트<br/><small>중간</small>"]
-    Unit["🟩 단위 테스트<br/><small>빠름, 많이</small>"]
-
-    E2E --- Integration --- Unit
+flowchart LR
+    Unit["🟩 단위 테스트<br/><small>빠름, 많이</small>"] ~~~ Integration["🔸 통합 테스트<br/><small>중간</small>"] ~~~ E2E["🔺 E2E<br/><small>느림, 적게</small>"]
 
     style E2E fill:#ffcccc,stroke:#cc0000
     style Integration fill:#fff3cd,stroke:#cc9900
@@ -667,13 +663,8 @@ flowchart TB
 [Kent C. Dodds](https://kentcdodds.com/blog/write-tests)가 제안한 모델이다.
 
 ```mermaid
-flowchart TB
-    E2E2["E2E"]
-    Integration2["🏆 통합 테스트<br/><small>← 가장 많이</small>"]
-    Unit2["단위 테스트"]
-    Static["Static<br/><small>타입 체크, 린터</small>"]
-
-    E2E2 --- Integration2 --- Unit2 --- Static
+flowchart LR
+    Static["Static<br/><small>타입 체크, 린터</small>"] ~~~ Unit2["단위 테스트"] ~~~ Integration2["🏆 통합 테스트<br/><small>← 가장 많이</small>"] ~~~ E2E2["E2E"]
 
     style Integration2 fill:#ffd700,stroke:#cc9900,stroke-width:3px
 ```
@@ -710,12 +701,8 @@ flowchart TB
 ## 테스트 레벨별 구성
 
 ```mermaid
-flowchart TB
-    E2E3["🔺 E2E<br/><small>전체 앱, 모든 컨테이너</small>"]
-    Integration3["🔸 통합 테스트<br/><small>필요한 컨테이너만</small>"]
-    Unit3["🟩 단위 테스트<br/><small>도메인 로직, 빠른 피드백</small>"]
-
-    E2E3 --- Integration3 --- Unit3
+flowchart LR
+    Unit3["🟩 단위 테스트<br/><small>도메인 로직, 빠른 피드백</small>"] ~~~ Integration3["🔸 통합 테스트<br/><small>필요한 컨테이너만</small>"] ~~~ E2E3["🔺 E2E<br/><small>전체 앱, 모든 컨테이너</small>"]
 
     style E2E3 fill:#ffcccc,stroke:#cc0000
     style Integration3 fill:#fff3cd,stroke:#cc9900

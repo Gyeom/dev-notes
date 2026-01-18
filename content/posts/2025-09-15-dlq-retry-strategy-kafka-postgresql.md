@@ -1,10 +1,10 @@
 ---
-title: "DLQ 재처리 전략: Kafka DLT, PostgreSQL DLQ, 그리고 하이브리드"
+title: "DLQ 재처리 전략: Kafka DLT, DB, 하이브리드"
 date: 2025-09-15
 draft: false
-tags: ["Kafka", "PostgreSQL", "DLQ", "DLT", "Spring Boot", "에러핸들링", "분산시스템"]
+tags: ["Kafka", "DLQ", "DLT", "Spring Boot", "에러핸들링", "분산시스템"]
 categories: ["Backend"]
-summary: "분산 시스템에서 메시지 처리 실패 시 어떻게 재처리할까? Kafka DLT, PostgreSQL DLQ, 하이브리드 방식의 장단점을 실제 구현 코드와 함께 비교한다. Robinhood와 Uber의 실제 사례를 포함하여 프로젝트에 맞는 전략을 선택하는 의사결정 트리를 제공한다."
+summary: "분산 시스템에서 메시지 처리 실패 시 어떻게 재처리할까? Kafka DLT, DB 기반 DLQ, 하이브리드 방식의 장단점을 비교한다. Robinhood와 Uber 사례를 포함하여 프로젝트에 맞는 전략 선택 기준을 제공한다."
 ---
 
 ## 왜 DLQ가 필요한가
@@ -21,9 +21,9 @@ summary: "분산 시스템에서 메시지 처리 실패 시 어떻게 재처리
 
 ## 세 가지 접근법
 
-| 구분 | Kafka DLT | PostgreSQL DLQ | 하이브리드 |
-|------|-----------|----------------|------------|
-| 저장소 | Kafka Topic | RDB 테이블 | DLT → DB → 원본 토픽 |
+| 구분 | Kafka DLT | DB 기반 DLQ | 하이브리드 |
+|------|-----------|-------------|------------|
+| 저장소 | Kafka Topic | DB 테이블 | DLT → DB → 원본 토픽 |
 | 적합한 상황 | 이미 Kafka 사용 중 | 단순한 구조 선호 | 운영 편의성 + Kafka |
 | 재처리 방식 | Consumer 재시작 | 스케줄러/배치 | DB에서 원본 토픽으로 재발행 |
 | 순서 보장 | 파티션 내 보장 | 명시적 정렬 필요 | 재발행 시점 기준 |
@@ -84,9 +84,9 @@ fun handleDlt(
 
 ---
 
-## PostgreSQL DLQ
+## DB 기반 DLQ
 
-Kafka 없이 단순하게 구현하거나, 실패 메시지를 SQL로 쉽게 조회하고 싶을 때 적합하다.
+Kafka 없이 단순하게 구현하거나, 실패 메시지를 SQL로 쉽게 조회하고 싶을 때 적합하다. PostgreSQL, MySQL 등 어떤 RDB든 사용 가능하다.
 
 ### 테이블 설계
 
@@ -260,20 +260,16 @@ Database만 사용하면 성능이 아쉽다.
 ### 아키텍처
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Kafka ["Kafka"]
-        MT[Main Topic] --> RT[Retry Topics]
-        RT --> DLT[DLT Topic]
+        MT[Main Topic] --> RT[Retry Topics] --> DLT[DLT Topic]
     end
 
     DLT --> Handler["@DltHandler<br/>DB 저장"]
     Handler --> DB[(Database<br/>DLQ 테이블)]
 
     subgraph Ops ["운영자 액션"]
-        direction LR
-        Q["SQL 조회/분석"]
-        E["메시지 수정"]
-        R["선택적 재처리"]
+        Q["SQL 조회/분석"] ~~~ E["메시지 수정"] ~~~ R["선택적 재처리"]
     end
 
     DB --> Ops
@@ -554,7 +550,7 @@ class DlqMetrics(
 
 ```mermaid
 flowchart TD
-    A{Kafka 사용 중?} -->|No| B[PostgreSQL DLQ]
+    A{Kafka 사용 중?} -->|No| B[DB 기반 DLQ]
     B --> B1[SQL 조회 편의성]
 
     A -->|Yes| C{운영 요구사항}
@@ -564,10 +560,10 @@ flowchart TD
     C -->|운영 편의성 필요| E[하이브리드]
     E --> E1[SQL 조회 + 선택적 재처리 + 감사 로그]
 
-    F{실패 메시지<br/>분석/수정 필요?} -->|Yes| G[하이브리드 또는<br/>PostgreSQL DLQ]
+    F{실패 메시지<br/>분석/수정 필요?} -->|Yes| G[하이브리드 또는<br/>DB 기반 DLQ]
     F -->|No| H[Kafka DLT]
 
-    I{팀 규모와<br/>운영 복잡도} -->|소규모, 단순| J[Kafka DLT 또는<br/>PostgreSQL DLQ]
+    I{팀 규모와<br/>운영 복잡도} -->|소규모, 단순| J[Kafka DLT 또는<br/>DB 기반 DLQ]
     I -->|대규모, 복잡| K[하이브리드]
     K --> K1[Robinhood, Uber 사례]
 
@@ -587,7 +583,7 @@ flowchart TD
 | 전략 | 사용 시점 | 핵심 포인트 |
 |------|----------|-------------|
 | Kafka DLT | Kafka 인프라 사용, 단순 재시도 | `@RetryableTopic` + `@DltHandler` |
-| PostgreSQL DLQ | Kafka 미사용, SQL 조회 필요 | JSONB + 스케줄러 재처리 |
+| DB 기반 DLQ | Kafka 미사용, SQL 조회 필요 | JSON 컬럼 + 스케줄러 재처리 |
 | 하이브리드 | Kafka + 운영 편의성 | DLT → DB 저장 → 원본 토픽 재발행 |
 
 세 방식 모두 핵심 원칙은 동일하다.
