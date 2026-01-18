@@ -255,7 +255,7 @@ dirty 배치는 재계산 후 `cache-invalidation` 토픽으로 Kafka 이벤트�
 
 다운샘플링된 데이터를 API로 제공할 때 캐시가 필요하다. 하지만 단절 데이터 때문에 캐시 무효화 전략이 중요하다.
 
-### 하이브리드 캐시 전략
+### 시계열 데이터 캐싱 전략
 
 ```mermaid
 flowchart LR
