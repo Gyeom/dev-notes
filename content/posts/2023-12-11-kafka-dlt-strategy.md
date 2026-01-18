@@ -15,7 +15,35 @@ DLT는 재시도에도 불구하고 처리에 실패한 메시지를 저장하�
 
 - 처리 실패 메시지의 안전한 격리
 - 실패 원인 분석 및 디버깅
-- 메인 데이터 스트림의 방해 최소화
+- 메인 스트림 처리 흐름 유지 (Non-blocking)
+
+---
+
+## 왜 Non-blocking 재시도인가
+
+실패한 메시지를 같은 Consumer에서 바로 재시도하면 **Head-of-line blocking**이 발생한다. 앞의 실패 메시지가 해결될 때까지 뒤의 정상 메시지들이 대기해야 한다.
+
+```mermaid
+flowchart LR
+    subgraph blocking ["Blocking 재시도"]
+        B1["실패 ❌"] --> B2["재시도..."] --> B3["정상 ⏳ 대기"]
+    end
+    subgraph nonblocking ["Non-blocking (DLT)"]
+        N1["실패 ❌"] --> N2["DLT로 이동"]
+        N3["정상 ✅"] --> N4["즉시 처리"]
+    end
+    blocking ~~~ nonblocking
+```
+
+| 방식 | 오프셋 진행 | 뒤 메시지 처리 | 처리량 |
+|------|------------|---------------|--------|
+| Blocking | 실패 시 멈춤 | 대기 | 저하 |
+| Non-blocking (DLT) | 계속 진행 | 즉시 처리 | 유지 |
+
+DLT는 실패 메시지를 별도 토픽으로 격리하여 메인 Consumer가 다음 메시지를 즉시 처리하게 한다.
+
+> "Non-blocking request reprocessing... without blocking real-time traffic"
+> — [Uber Engineering](https://www.uber.com/blog/reliable-reprocessing/)
 
 ---
 
@@ -135,6 +163,7 @@ fun processDltMessage(
 ## 참고 자료
 
 - [Spring Kafka - DLT Strategies](https://docs.spring.io/spring-kafka/reference/retrytopic/dlt-strategies.html)
+- [Uber - Building Reliable Reprocessing and Dead Letter Queues with Kafka](https://www.uber.com/blog/reliable-reprocessing/)
 - [Baeldung - Dead Letter Queue for Kafka With Spring](https://www.baeldung.com/kafka-spring-dead-letter-queue)
 - [Baeldung - Implementing Retry in Kafka Consumer](https://www.baeldung.com/spring-retry-kafka-consumer)
 - [Spring Kafka Non-Blocking Retries and Dead Letter Topics](https://github.com/eugene-khyst/spring-kafka-non-blocking-retries-and-dlt)
