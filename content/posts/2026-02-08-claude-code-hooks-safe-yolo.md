@@ -1,7 +1,7 @@
 ---
 title: "Claude Code Hooks로 --dangerously-skip-permissions를 안전하게 사용하기"
 date: 2026-02-08
-draft: false
+draft: true
 tags: ["Claude Code", "Hooks", "PreToolUse", "멀티에이전트"]
 categories: ["AI Tools"]
 summary: "Claude Code의 --dangerously-skip-permissions는 편리하지만 위험하다. PreToolUse Hook은 권한 시스템과 독립적으로 동작하므로, YOLO 모드에서도 위험한 작업을 차단할 수 있다. sambaiz.net의 실험을 바탕으로 정리한다."

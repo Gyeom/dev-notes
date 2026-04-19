@@ -1,7 +1,7 @@
 ---
 title: "Claude Code --dangerously-skip-permissions를 안전하게 사용하는 방법"
 date: 2026-02-08
-draft: false
+draft: true
 tags: ["Claude Code", "Agent Teams", "Hooks", "멀티에이전트", "tmux"]
 categories: ["AI Tools"]
 summary: "Claude Code의 --dangerously-skip-permissions 플래그는 멀티 에이전트 환경에서 필수적이다. 하지만 이름 그대로 위험하다. PreToolUse Hook을 가드레일로 활용하면 편의성과 안전성을 동시에 확보할 수 있다."
